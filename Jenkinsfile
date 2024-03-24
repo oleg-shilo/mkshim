@@ -4,6 +4,10 @@ pipeline {
     stage('Clean workspace') {
       steps {
         sh 'cleamWs()'
+        script {
+          cleanWs()
+        }
+
       }
     }
 
