@@ -10,7 +10,7 @@ MkShim is a simple alternative tool that delivers the same functionality as Shim
 
 Usage:
 ```txt
-mkshim <shim_name> <mapped_executable>
+mkshim <shim_name> <mapped_executable> 
 ``` 
 
 Thus if you want to create a shim `ntp` for launching `notepad.exe`, then you can achieve this by simply executing the following command from the terminal:
