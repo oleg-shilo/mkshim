@@ -84,9 +84,16 @@ static class MkShim
     {
         if (args.Contains("-h") || args.Contains("-?") || args.Contains("?") || args.Contains("-help"))
         {
+            Console.WriteLine($@"{Path.GetFileName(ThisAssemblyFile)} (v{ThisAssemblyFileVersion})");
             Console.WriteLine($@"Generates shim for a given executable file.");
             Console.WriteLine($@"Usage:");
             Console.WriteLine($@"   mkshim <shim_name> <mapped_executable>");
+            return true;
+        }
+
+        if (args.Contains("-v") || args.Contains("-version"))
+        {
+            Console.WriteLine(ThisAssemblyFileVersion);
             return true;
         }
 
@@ -178,6 +185,9 @@ static class MkShim
 
     static string GetFileVersion(this string file)
         => FileVersionInfo.GetVersionInfo(file).FileVersion;
+
+    static string ThisAssemblyFile => Assembly.GetExecutingAssembly().Location;
+    static string ThisAssemblyFileVersion => ThisAssemblyFile.GetFileVersion();
 
     static string csc
     {
