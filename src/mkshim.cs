@@ -89,12 +89,22 @@ static class MkShim
     {
         if (args.Contains("-h") || args.Contains("-?") || args.Contains("?") || args.Contains("-help"))
         {
-            Console.WriteLine($@"{Path.GetFileName(ThisAssemblyFile)} (v{ThisAssemblyFileVersion})");
+            Console.WriteLine($@"{Path.GetFileNameWithoutExtension(ThisAssemblyFile)} (v{ThisAssemblyFileVersion}) - Shim generator");
+            Console.WriteLine("Copyright(C) 2024 - 2025 Oleg Shilo (github.com/oleg-shilo)");
             Console.WriteLine($@"Generates shim for a given executable file.");
-            Console.WriteLine($@"Usage:");
-            Console.WriteLine($@"   mkshim <shim_name> <target_executable>");
             Console.WriteLine();
-            Console.WriteLine("You can use '--mkshim-noop' argument with the created shim to print <target_executable>");
+            Console.WriteLine($@"Usage:");
+            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--command=<args>]");
+            Console.WriteLine();
+            Console.WriteLine("-c | --command=args");
+            Console.WriteLine("    The command arguments you want to pass to the executable.");
+            Console.WriteLine("    IE for using with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
+            Console.WriteLine();
+            Console.WriteLine("You can use special mkshim arguments with the created shim:");
+            Console.WriteLine(" --mkshim-noop");
+            Console.WriteLine("   Execute created shim but print <target_executable> instead of executing it.");
+            Console.WriteLine(" --mkshim-test");
+            Console.WriteLine("   Tests if shim's <target_executable> exists.");
             return true;
         }
         else if (args.Contains("-v") || args.Contains("-version"))
@@ -111,8 +121,8 @@ static class MkShim
 
         if (Environment.OSVersion.Platform != PlatformID.Win32NT)
         {
-            Console.WriteLine("Creating a shim to an executable file this way is only useful on windows. On Linux you " +
-                              "have a much better option `alias`. You can enable it as below: " + Environment.NewLine +
+            Console.WriteLine("Creating a shim to an executable file this way is only useful on Windows. On Linux you " +
+                              "have a much better option `alias`. You can use it as in the example for CS-Script executable below: " + Environment.NewLine +
                               "alias css='dotnet /usr/local/bin/cs-script/cscs.exe'" + Environment.NewLine +
                               "After that you can invoke CS-Script engine from anywhere by just typing 'css'.");
             return true;
@@ -246,9 +256,8 @@ static class MkShim
         string resFile = Path.ChangeExtension(rcFile, ".res");
         var targetFileMetadata = targetExe.GetFileVersion();
 
-        // Define the RC file content
+        // A simplest possible RC file content
         string rcContent = $@"
-
 1 VERSIONINFO
 FILEVERSION 1,0,0,0
 PRODUCTVERSION 1,0,0,0
@@ -257,7 +266,7 @@ BEGIN
     BEGIN
         BLOCK ""040904B0""  // Language: US English
         BEGIN
-            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (created with MKSHIM v{Assembly.GetExecutingAssembly().GetName().Version})""
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version})""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
             VALUE ""ProductName"", ""{targetExe.Replace("\\", "\\\\")}""
@@ -269,11 +278,6 @@ BEGIN
     END
 END
 ";
-        // VALUE ""CompanyName"", ""MyCompany""
-        // VALUE ""InternalName"", ""MyApp.exe""
-        // VALUE ""OriginalFilename"", ""MyApp.exe""
-        // VALUE ""ProductVersion"", ""1.0.0.0""
-
         File.WriteAllText(rcFile, rcContent);
 
         // Compile the RC file to a RES file

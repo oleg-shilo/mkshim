@@ -16,6 +16,27 @@ static class ConsoleShim
 
     static void Main(string[] args)
     {
+        if (args.Contains("--mkshim-test"))
+        {
+            string message = "Success: target file exists.";
+            int exitCode = 0;
+            if(!File.Exists(appFile))
+            {
+                message = "Error: target file is not found.";
+                exitCode = -1;
+            }
+
+            Console.WriteLine(message);
+            Console.WriteLine("Target: " + appFile);
+            Environment.Exit(exitCode);
+        }
+        else if (args.Contains("--mkshim-noop"))
+        {
+            Console.WriteLine("Executing shim in 'no operation' mode.");
+            Console.WriteLine("Target: " + appFile);
+            Environment.Exit(0);
+        }
+
         if (!File.Exists(appFile))
         {
             Console.WriteLine("The target executable was not found at " + appFile);
@@ -27,15 +48,7 @@ static class ConsoleShim
         try
         {
             Win32.ListenToConsoleExit();
-            if (args.Contains("--mkshim-noop"))
-            {
-                Console.WriteLine("Executing shim in 'no operation' mode.");
-                Console.WriteLine("Target executable: " + appFile);
-            }
-            else    
-            {
-                Environment.ExitCode = Run(appFile, Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
-            }   
+            Environment.ExitCode = Run(appFile, Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
         }
         catch (Win32Exception e)
         {
