@@ -44,6 +44,9 @@ static class MkShim
 
         var shim = Path.GetFullPath(args[0]);
         var exe = Path.GetFullPath(args[1]);
+        var embeddableArgs = args.Where(x => x.StartsWith("-c:")).Select(x => x.Substring(3)).Concat(
+                             args.Where(x => x.StartsWith("--command:")).Select(x => x.Substring(10)))
+                             .FirstOrDefault() ?? "";
 
         if (!exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
@@ -59,7 +62,7 @@ static class MkShim
             (bool isWinApp, bool is64App) = exe.GetPeInfo();
 
             var icon = exe.ExtractFirstIconToFolder(buildDir);
-            var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp);
+            var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, embeddableArgs);
             var res = exe.GenerateResFor(buildDir);
 
             var appIcon = (icon != null ? $"/win32icon:\"{icon}\"" : "");
@@ -96,9 +99,11 @@ static class MkShim
             Console.WriteLine($@"Usage:");
             Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--command=<args>]");
             Console.WriteLine();
-            Console.WriteLine("-c | --command=args");
-            Console.WriteLine("    The command arguments you want to pass to the executable.");
-            Console.WriteLine("    IE for using with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
+            Console.WriteLine("-v | --version");
+            Console.WriteLine("    Prints mkshim version.");
+            Console.WriteLine("-c:args | --command:args");
+            Console.WriteLine("    The command arguments you want to pass to the target executable.");
+            Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
             Console.WriteLine();
             Console.WriteLine("You can use special mkshim arguments with the created shim:");
             Console.WriteLine(" --mkshim-noop");
@@ -107,7 +112,7 @@ static class MkShim
             Console.WriteLine("   Tests if shim's <target_executable> exists.");
             return true;
         }
-        else if (args.Contains("-v") || args.Contains("-version"))
+        else if (args.Contains("-v") || args.Contains("--version") || args.Contains("-version"))
         {
             Console.WriteLine(ThisAssemblyFileVersion);
             return true;
@@ -160,7 +165,7 @@ static class MkShim
         return args.FirstOrDefault(x => x.StartsWith($"-{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
     }
 
-    static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp)
+    static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string embeddableArgs)
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
@@ -169,6 +174,7 @@ static class MkShim
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
                            .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exe}\")]")
                            .Replace("//{appFile}", $"static string appFile = @\"{exe}\";")
+                           .Replace("//{permanentArgs}", $"static string permanentArgs = @\"{embeddableArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};");
 
         File.WriteAllText(csFile, code);

@@ -13,6 +13,7 @@ using System.Runtime.InteropServices;
 static class ConsoleShim
 {
     //{appFile}
+    //{permanentArgs}
 
     static void Main(string[] args)
     {
@@ -48,7 +49,7 @@ static class ConsoleShim
         try
         {
             Win32.ListenToConsoleExit();
-            Environment.ExitCode = Run(appFile, Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
+            Environment.ExitCode = Run(appFile, permanentArgs + Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
         }
         catch (Win32Exception e)
         {
