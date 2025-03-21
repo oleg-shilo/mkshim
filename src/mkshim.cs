@@ -56,15 +56,17 @@ static class MkShim
         {
             Directory.CreateDirectory(buildDir);
 
-            var isWinApp = exe.IsWindowExe();
+            (bool isWinApp, bool is64App) = exe.GetPeInfo();
+
             var icon = exe.ExtractFirstIconToFolder(buildDir);
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp);
             var res = exe.GenerateResFor(buildDir);
 
             var appIcon = (icon != null ? $"/win32icon:\"{icon}\"" : "");
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
+            var cpu = (is64App ? "/platform:x64" : "");
 
-            var build = csc.Run($"-out:\"{shim}\" {appRes} {appIcon} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
+            var build = csc.Run($"-out:\"{shim}\" {appRes} {cpu} {appIcon} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
             build.WaitForExit();
 
             if (build.ExitCode == 0)
@@ -134,11 +136,11 @@ static class MkShim
         return null;
     }
 
-    static bool IsWindowExe(this string exe)
+    static (bool isWin, bool is64) GetPeInfo(this string exe)
     {
         using (var stream = File.OpenRead(exe))
         using (var peFile = new PEReader(stream))
-            return !peFile.PEHeaders.IsConsoleApplication;
+            return (!peFile.PEHeaders.IsConsoleApplication, peFile.PEHeaders.CoffHeader.Machine == Machine.Amd64);
     }
 
     public static string ArgValue(this string[] args, string name)
@@ -253,7 +255,7 @@ BEGIN
     BEGIN
         BLOCK ""040904B0""  // Language: US English
         BEGIN
-            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (MKSHIM v{Assembly.GetExecutingAssembly().GetName().Version})""
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (generated with MKSHIM v{Assembly.GetExecutingAssembly().GetName().Version})""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
             VALUE ""ProductName"", ""{targetExe.Replace("\\", "\\\\")}""
