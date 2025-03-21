@@ -18,7 +18,7 @@ static class ConsoleShim
     {
         if (!File.Exists(appFile))
         {
-            Console.WriteLine("The mapped executable was not found at " + appFile);
+            Console.WriteLine("The target executable was not found at " + appFile);
             Environment.Exit(-1);
         }
 
@@ -27,7 +27,15 @@ static class ConsoleShim
         try
         {
             Win32.ListenToConsoleExit();
-            Environment.ExitCode = Run(appFile, Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
+            if (args.Contains("--mkshim-noop"))
+            {
+                Console.WriteLine("Executing shim in 'no operation' mode.");
+                Console.WriteLine("Target executable: " + appFile);
+            }
+            else    
+            {
+                Environment.ExitCode = Run(appFile, Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
+            }   
         }
         catch (Win32Exception e)
         {

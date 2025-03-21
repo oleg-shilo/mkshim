@@ -92,7 +92,9 @@ static class MkShim
             Console.WriteLine($@"{Path.GetFileName(ThisAssemblyFile)} (v{ThisAssemblyFileVersion})");
             Console.WriteLine($@"Generates shim for a given executable file.");
             Console.WriteLine($@"Usage:");
-            Console.WriteLine($@"   mkshim <shim_name> <mapped_executable>");
+            Console.WriteLine($@"   mkshim <shim_name> <target_executable>");
+            Console.WriteLine();
+            Console.WriteLine("You can use '--mkshim-noop' argument with the created shim to print <target_executable>");
             return true;
         }
         else if (args.Contains("-v") || args.Contains("-version"))
@@ -255,7 +257,7 @@ BEGIN
     BEGIN
         BLOCK ""040904B0""  // Language: US English
         BEGIN
-            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (generated with MKSHIM v{Assembly.GetExecutingAssembly().GetName().Version})""
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (created with MKSHIM v{Assembly.GetExecutingAssembly().GetName().Version})""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
             VALUE ""ProductName"", ""{targetExe.Replace("\\", "\\\\")}""
