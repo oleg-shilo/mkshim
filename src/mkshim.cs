@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Drawing;
+using static System.Environment;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -58,10 +59,12 @@ static class MkShim
             var isWinApp = exe.IsWindowExe();
             var icon = exe.ExtractFirstIconToFolder(buildDir);
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp);
+            var res = exe.GenerateResFor(buildDir);
 
             var appIcon = (icon != null ? $"/win32icon:\"{icon}\"" : "");
+            var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
 
-            var build = csc.Run($"-out:\"{shim}\" {appIcon} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
+            var build = csc.Run($"-out:\"{shim}\" {appRes} {appIcon} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
             build.WaitForExit();
 
             if (build.ExitCode == 0)
@@ -90,8 +93,7 @@ static class MkShim
             Console.WriteLine($@"   mkshim <shim_name> <mapped_executable>");
             return true;
         }
-
-        if (args.Contains("-v") || args.Contains("-version"))
+        else if (args.Contains("-v") || args.Contains("-version"))
         {
             Console.WriteLine(ThisAssemblyFileVersion);
             return true;
@@ -146,11 +148,12 @@ static class MkShim
 
     static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp)
     {
-        var version = exe.GetFileVersion();
+        var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
+                           .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exe}\")]")
                            .Replace("//{appFile}", $"static string appFile = @\"{exe}\";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};");
 
@@ -183,11 +186,40 @@ static class MkShim
         return p;
     }
 
-    static string GetFileVersion(this string file)
-        => FileVersionInfo.GetVersionInfo(file).FileVersion;
+    // static string GetFileVersion(this string file)
+    //     => FileVersionInfo.GetVersionInfo(file).FileVersion;
+    static FileVersionInfo GetFileVersion(this string file)
+        => FileVersionInfo.GetVersionInfo(file);
 
     static string ThisAssemblyFile => Assembly.GetExecutingAssembly().Location;
-    static string ThisAssemblyFileVersion => ThisAssemblyFile.GetFileVersion();
+    static string ThisAssemblyFileVersion => FileVersionInfo.GetVersionInfo(ThisAssemblyFile).FileVersion;
+
+    static string _rc;
+
+    static string rc
+    {
+        get
+        {
+            if (_rc == null)
+            {
+                var dir = Path.Combine(GetFolderPath(SpecialFolder.ApplicationData), "mkshim");
+                Directory.CreateDirectory(dir); // will not fail if exists
+
+                var rc_exe = Path.Combine(dir, "rc.exe");
+                var rc_dll = Path.Combine(dir, "rcdll.dll");
+
+                if (!File.Exists(rc_exe))
+                {
+                    // write file from resources
+                    File.WriteAllBytes(rc_exe, Resource1.rc_exe);
+                    File.WriteAllBytes(rc_dll, Resource1.rcdll);
+                }
+
+                _rc = rc_exe;
+            }
+            return _rc;
+        }
+    }
 
     static string csc
     {
@@ -202,5 +234,48 @@ static class MkShim
             Console.WriteLine("Cannot locate csc.exe. Trying its default location: " + location);
             return location;
         }
+    }
+
+    static string GenerateResFor(this string targetExe, string outDir)
+    {
+        string rcFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(targetExe) + ".rc");
+        string resFile = Path.ChangeExtension(rcFile, ".res");
+        var targetFileMetadata = targetExe.GetFileVersion();
+
+        // Define the RC file content
+        string rcContent = $@"
+
+1 VERSIONINFO
+FILEVERSION 1,0,0,0
+PRODUCTVERSION 1,0,0,0
+BEGIN
+    BLOCK ""StringFileInfo""
+    BEGIN
+        BLOCK ""040904B0""  // Language: US English
+        BEGIN
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (MKSHIM v{Assembly.GetExecutingAssembly().GetName().Version})""
+            VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
+            VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
+            VALUE ""ProductName"", ""{targetExe.Replace("\\", "\\\\")}""
+        END
+    END
+    BLOCK ""VarFileInfo""
+    BEGIN
+        VALUE ""Translation"", 0x0409, 1200
+    END
+END
+";
+        // VALUE ""CompanyName"", ""MyCompany""
+        // VALUE ""InternalName"", ""MyApp.exe""
+        // VALUE ""OriginalFilename"", ""MyApp.exe""
+        // VALUE ""ProductVersion"", ""1.0.0.0""
+
+        File.WriteAllText(rcFile, rcContent);
+
+        // Compile the RC file to a RES file
+        var build = rc.Run(rcFile);
+        build.WaitForExit();
+
+        return build.ExitCode == 0 ? resFile : null;
     }
 }

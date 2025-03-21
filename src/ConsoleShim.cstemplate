@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 
 //{version}
+//{target}
 
 static class ConsoleShim
 {
