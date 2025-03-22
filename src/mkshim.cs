@@ -1,4 +1,4 @@
-//css_ref IconExtractor.dll
+﻿//css_ref IconExtractor.dll
 using System;
 using System.Diagnostics;
 using System.Drawing;
@@ -44,9 +44,12 @@ static class MkShim
 
         var shim = Path.GetFullPath(args[0]);
         var exe = Path.GetFullPath(args[1]);
-        var embeddableArgs = args.Where(x => x.StartsWith("-c:")).Select(x => x.Substring(3)).Concat(
-                             args.Where(x => x.StartsWith("--command:")).Select(x => x.Substring(10)))
-                             .FirstOrDefault() ?? "";
+        var defaultArgs = args.Where(x => x.StartsWith("-p:")).Select(x => x.Substring(3)).Concat(
+                          args.Where(x => x.StartsWith("--params:")).Select(x => x.Substring(10)))
+                          .FirstOrDefault()
+                              .Replace("\\", "\\\\")
+                              .Replace("\"", "\\\"")
+                          ?? "";
 
         if (!exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
@@ -62,8 +65,8 @@ static class MkShim
             (bool isWinApp, bool is64App) = exe.GetPeInfo();
 
             var icon = exe.ExtractFirstIconToFolder(buildDir);
-            var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, embeddableArgs);
-            var res = exe.GenerateResFor(buildDir);
+            var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
+            var res = exe.GenerateResFor(buildDir, defaultArgs);
 
             var appIcon = (icon != null ? $"/win32icon:\"{icon}\"" : "");
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
@@ -97,12 +100,12 @@ static class MkShim
             Console.WriteLine($@"Generates shim for a given executable file.");
             Console.WriteLine();
             Console.WriteLine($@"Usage:");
-            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--command=<args>]");
+            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params=<args>]");
             Console.WriteLine();
             Console.WriteLine("-v | --version");
             Console.WriteLine("    Prints mkshim version.");
-            Console.WriteLine("-c:args | --command:args");
-            Console.WriteLine("    The command arguments you want to pass to the target executable.");
+            Console.WriteLine("-p:args | --params:args");
+            Console.WriteLine("    The defaul arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
             Console.WriteLine();
             Console.WriteLine("You can use special mkshim arguments with the created shim:");
@@ -165,7 +168,7 @@ static class MkShim
         return args.FirstOrDefault(x => x.StartsWith($"-{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
     }
 
-    static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string embeddableArgs)
+    static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string defaultArgs)
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
@@ -174,7 +177,7 @@ static class MkShim
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
                            .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exe}\")]")
                            .Replace("//{appFile}", $"static string appFile = @\"{exe}\";")
-                           .Replace("//{permanentArgs}", $"static string permanentArgs = @\"{embeddableArgs} \";")
+                           .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};");
 
         File.WriteAllText(csFile, code);
@@ -256,11 +259,12 @@ static class MkShim
         }
     }
 
-    static string GenerateResFor(this string targetExe, string outDir)
+    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs)
     {
         string rcFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(targetExe) + ".rc");
         string resFile = Path.ChangeExtension(rcFile, ".res");
         var targetFileMetadata = targetExe.GetFileVersion();
+        var defArgs = string.IsNullOrEmpty(defaultArgs) ? "" : $"; Default params: {defaultArgs.Replace("\\\"", "'")}"; // sigcheck does not like `\"` in the res value text
 
         // A simplest possible RC file content
         string rcContent = $@"
@@ -272,7 +276,7 @@ BEGIN
     BEGIN
         BLOCK ""040904B0""  // Language: US English
         BEGIN
-            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version})""
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
             VALUE ""ProductName"", ""{targetExe.Replace("\\", "\\\\")}""

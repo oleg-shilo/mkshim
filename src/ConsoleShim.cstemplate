@@ -13,7 +13,7 @@ using System.Runtime.InteropServices;
 static class ConsoleShim
 {
     //{appFile}
-    //{permanentArgs}
+    //{defaultArgs}
 
     static void Main(string[] args)
     {
@@ -35,6 +35,7 @@ static class ConsoleShim
         {
             Console.WriteLine("Executing shim in 'no operation' mode.");
             Console.WriteLine("Target: " + appFile);
+            Console.WriteLine("Default params: " + defaultArgs);
             Environment.Exit(0);
         }
 
@@ -49,7 +50,7 @@ static class ConsoleShim
         try
         {
             Win32.ListenToConsoleExit();
-            Environment.ExitCode = Run(appFile, permanentArgs + Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
+            Environment.ExitCode = Run(appFile, defaultArgs + Extensions.ToCmdArgs(args), Environment.CurrentDirectory, toWait, toElevate: false);
         }
         catch (Win32Exception e)
         {
