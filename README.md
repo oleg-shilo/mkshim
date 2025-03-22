@@ -1,5 +1,11 @@
 # mkshim
 
+[Install from winget](https://winstall.app/apps/oleg-shilo.mkshim):    
+```
+winget install --id=oleg-shilo.mkshim  -e
+``` 
+---
+
 This is a simple application for creating shims on Windows. 
 
 The problem it is trying to solve is a lack of good technical solutions for executable aliases on Windows. While on linux the thangs are much simpler, on Windows synbolic links are not as efficient as they do not handle well executables that have dependencies.
