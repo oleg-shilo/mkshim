@@ -105,7 +105,7 @@ static class MkShim
             Console.WriteLine("-v | --version");
             Console.WriteLine("    Prints mkshim version.");
             Console.WriteLine("-p:args | --params:args");
-            Console.WriteLine("    The defaul arguments you always want to pass to the target executable.");
+            Console.WriteLine("    The default arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
             Console.WriteLine();
             Console.WriteLine("You can use special mkshim arguments with the created shim:");
