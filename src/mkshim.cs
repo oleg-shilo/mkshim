@@ -42,11 +42,15 @@ static class MkShim
         if (HandleUserInput(args))
             return;
 
-        var shim = Path.GetFullPath(args[0]);
-        var exe = Path.GetFullPath(args[1]);
+        var shim = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0]));
+        var exe = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1]));
+
+        if (!File.Exists(exe))
+            throw new FileNotFoundException(exe);
+
         var defaultArgs = args.Where(x => x.StartsWith("-p:")).Select(x => x.Substring(3)).Concat(
                           args.Where(x => x.StartsWith("--params:")).Select(x => x.Substring(10)))
-                          .FirstOrDefault()
+                          .FirstOrDefault()?
                               .Replace("\\", "\\\\")
                               .Replace("\"", "\\\"")
                           ?? "";
@@ -66,13 +70,12 @@ static class MkShim
 
             var icon = exe.ExtractFirstIconToFolder(buildDir);
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
-            var res = exe.GenerateResFor(buildDir, defaultArgs);
+            var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
 
-            var appIcon = (icon != null ? $"/win32icon:\"{icon}\"" : "");
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
             var cpu = (is64App ? "/platform:x64" : "");
 
-            var build = csc.Run($"-out:\"{shim}\" {appRes} {cpu} {appIcon} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
+            var build = csc.Run($"-out:\"{shim}\" {appRes} {cpu} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
             build.WaitForExit();
 
             if (build.ExitCode == 0)
@@ -259,7 +262,9 @@ static class MkShim
         }
     }
 
-    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs)
+    static string EscapeCSharpPath(this string path) => path.Replace("\\", "\\\\");
+
+    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile)
     {
         string rcFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(targetExe) + ".rc");
         string resFile = Path.ChangeExtension(rcFile, ".res");
@@ -279,7 +284,7 @@ BEGIN
             VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
-            VALUE ""ProductName"", ""{targetExe.Replace("\\", "\\\\")}""
+            VALUE ""ProductName"", ""{targetExe.EscapeCSharpPath()}""
         END
     END
     BLOCK ""VarFileInfo""
@@ -288,10 +293,19 @@ BEGIN
     END
 END
 ";
+        if (!string.IsNullOrEmpty(iconFile))
+        {
+            rcContent += $@"
+1 ICON ""{iconFile.EscapeCSharpPath()}""
+IDI_MAIN_ICON
+";
+        }
+
         File.WriteAllText(rcFile, rcContent);
 
         // Compile the RC file to a RES file
         var build = rc.Run(rcFile);
+
         build.WaitForExit();
 
         return build.ExitCode == 0 ? resFile : null;
