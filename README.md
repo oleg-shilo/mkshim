@@ -18,7 +18,7 @@ CLI help:
 
 ```txt
 Usage:
-   mkshim <shim_name> <target_executable> [--params=<args>]
+   mkshim <shim_name> <target_executable> [--params:args>]
 
 -v | --version
     Prints mkshim version.
