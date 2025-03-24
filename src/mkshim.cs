@@ -48,12 +48,10 @@ static class MkShim
         if (!File.Exists(exe))
             throw new FileNotFoundException(exe);
 
-        var defaultArgs = args.Where(x => x.StartsWith("-p:")).Select(x => x.Substring(3)).Concat(
-                          args.Where(x => x.StartsWith("--params:")).Select(x => x.Substring(10)))
-                          .FirstOrDefault()?
-                              .Replace("\\", "\\\\")
-                              .Replace("\"", "\\\"")
-                          ?? "";
+        var defaultArgs = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
+                           .Replace("\\", "\\\\")
+                           .Replace("\"", "\\\"")
+                           ?? "";
 
         if (!exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
@@ -103,7 +101,7 @@ static class MkShim
             Console.WriteLine($@"Generates shim for a given executable file.");
             Console.WriteLine();
             Console.WriteLine($@"Usage:");
-            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params=<args>]");
+            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params:<args>]");
             Console.WriteLine();
             Console.WriteLine("-v | --version");
             Console.WriteLine("    Prints mkshim version.");
@@ -168,7 +166,7 @@ static class MkShim
 
     public static string ArgValue(this string[] args, string name)
     {
-        return args.FirstOrDefault(x => x.StartsWith($"-{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
+        return args.FirstOrDefault(x => x.StartsWith($"{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
     }
 
     static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string defaultArgs)
@@ -228,23 +226,47 @@ static class MkShim
         {
             if (_rc == null)
             {
-                var dir = Path.Combine(GetFolderPath(SpecialFolder.ApplicationData), "mkshim");
+                var dir = Path.Combine(GetFolderPath(SpecialFolder.ApplicationData), "mkshim", $"v{ThisAssemblyFileVersion}");
                 Directory.CreateDirectory(dir); // will not fail if exists
+
+                ClearOldBinaries(dir);
 
                 var rc_exe = Path.Combine(dir, "rc.exe");
                 var rc_dll = Path.Combine(dir, "rcdll.dll");
+                var servicing_dll = Path.Combine(dir, "ServicingCommon.dll");
 
                 if (!File.Exists(rc_exe))
                 {
                     // write file from resources
                     File.WriteAllBytes(rc_exe, Resource1.rc_exe);
                     File.WriteAllBytes(rc_dll, Resource1.rcdll);
+                    File.WriteAllBytes(servicing_dll, Resource1.ServicingCommon);
                 }
 
                 _rc = rc_exe;
             }
             return _rc;
         }
+    }
+
+    static void ClearOldBinaries(string thisAppBinaryDir)
+    {
+        var rootDir = Path.GetDirectoryName(thisAppBinaryDir);
+        // v1.1.0.0
+        foreach (var item in Directory.GetFiles(rootDir, "*.*"))
+            try
+            {
+                File.Delete(item);
+            }
+            catch { }
+
+        // v1.1.0.0+
+        foreach (var item in Directory.GetDirectories(rootDir, "v*.*.*").Where(x => x != thisAppBinaryDir))
+            try
+            {
+                Directory.Delete(item, recursive: true);
+            }
+            catch { }
     }
 
     static string csc

@@ -103,6 +103,16 @@ namespace mkshim {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] ServicingCommon {
+            get {
+                object obj = ResourceManager.GetObject("ServicingCommon", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] System_Buffers {
             get {
                 object obj = ResourceManager.GetObject("System_Buffers", resourceCulture);
