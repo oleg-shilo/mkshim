@@ -4,9 +4,10 @@
 ```
 winget install --id=oleg-shilo.mkshim  -e
 ``` 
----
 
-This is a simple application for creating shims on Windows. 
+# Overview
+
+MKSHIM is a simple application for creating shims on Windows. 
 
 The problem it is trying to solve is a lack of good technical solutions for executable aliases on Windows. While on linux the thangs are much simpler, on Windows synbolic links are not as efficient as they do not handle well executables that have dependencies.
 
@@ -14,7 +15,7 @@ Chocolatey (the Package Manager for Windows) has solved this problem by implemen
 
 MkShim is a simple alternative tool that delivers the same functionality as ShimGen and is distributed independently and under MIT licence.
 
-CLI help:
+## Creating shims with mkshim
 
 ```txt
 Usage:
@@ -23,7 +24,7 @@ Usage:
 -v | --version
     Prints mkshim version.
 -p:args | --params:args
-    The defaul arguments you always want to pass to the target executable.
+    The default arguments you always want to pass to the target executable.
     IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir="/some/path"'
 
 You can use special mkshim arguments with the created shim:
@@ -33,14 +34,31 @@ You can use special mkshim arguments with the created shim:
    Tests if shim's <target_executable> exists.
 ``` 
 
-Thus if you want to create a shim `ntp` for launching `notepad.exe`, then you can achieve this by simply executing the following command from the terminal:
+Thus, if you want to create a shim `ntp` for launching `notepad.exe`, then you can achieve this by simply executing the following command from the terminal:
 ```
 mkshim C:\ProgramData\chocolatey\bin\ntp.exe C:\Windows\System32\notepad.exe
 ```
-Note: in this example, the shim is created in the Cocolatey bin folder, which is in the system PATH.
+In the example above, the shim is created in the Cocolatey bin folder in the system PATH.
 
----
-When it comes to working with the shims you created, it is always useful to be able to extract the information about shim's target file details (e.g. path).
+> [!NOTE] 
+> The mkshim CLI parameter `--params:args` deserves special mention. It is a very powerful option for creating shims that are pre-filled with some parameters useful in cases when the user always wants to start the application with some default parameters. Some examples:
+> - Start SQL Server Management Studio with a specific DB connection
+> - Start PoewShell terminal with specefic theme
+> - Start portable Chrome with a custom user data directory
+> 
+> When you embed default parameters in the shim, you may need to handle quotation mark characters or spaces. In such cases, you should rely on standard Windows escaping techniques.  
+> _Example (courtesy of @mdnava):_
+> You want to create a shim for running chrome with two parameters `--save-page-as-mhtml --user-data-dir=\"%LOCALAPPDATA%\ChromeTest\"`
+> The following command will create the required shim:
+> ```cmd
+> mkshim.exe .\ChromeTest.exe %Programs%\Chromium\chrome.exe --params:"--save-page-as-mhtml --user-data-dir=\"%LOCALAPPDATA%\ChromeTest\""
+> :: or
+> mkshim.exe .\ChromeTest.exe %Programs%\Chromium\chrome.exe "--params:--save-page-as-mhtml --user-data-dir=\"%LOCALAPPDATA%\ChromeTest\""
+> ```
+
+## Using shims
+
+When it comes to working with the shims you created, it is always useful to be able to extract the information about the shim's target file details (e.g. path).
 You can do this by executing the shim with the special mkshim-specific command line parameters: 
 _IE rc.exe shim is created for the Windows SDK resource compiler rc.exe_
 
