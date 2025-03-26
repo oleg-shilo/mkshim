@@ -1,7 +1,9 @@
 ﻿//css_ref IconExtractor.dll
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using static System.Environment;
 using System.IO;
 using System.Linq;
@@ -150,6 +152,8 @@ static class MkShim
 
             using (var validIcon = Bitmap.FromFile(iconFile)) // check that it is a valid icon file
             { }
+
+            IconExtensions.ApplyOverlayToIcon(iconFile, Path.Combine(Path.GetDirectoryName(ThisAssemblyFile), "overlay"), iconFile + ".ico");
 
             return iconFile;
         }
@@ -331,5 +335,113 @@ IDI_MAIN_ICON
         build.WaitForExit();
 
         return build.ExitCode == 0 ? resFile : null;
+    }
+}
+
+class IconExtensions
+{
+    public static void ApplyOverlayToIcon(string iconPath, string overlayFolder, string outputPath)
+    {
+        using (var originalIcon = new Icon(iconPath, new Size(256, 256)))
+        {
+            List<Bitmap> bitmaps = ExtractBitmapsFromIcon(originalIcon);
+            var overlayImages = LoadOverlayImages(overlayFolder);
+
+            List<Bitmap> modifiedBitmaps = bitmaps.Select(bmp => ApplyOverlay(bmp, overlayImages)).ToList();
+
+            using (var newIcon = CreateIconFromBitmaps(modifiedBitmaps))
+            {
+                SaveIconToFile(newIcon, outputPath);
+            }
+        }
+    }
+
+    static List<Bitmap> ExtractBitmapsFromIcon(Icon icon)
+    {
+        List<Bitmap> bitmaps = new List<Bitmap>();
+        foreach (var size in new[] { 16, 32, 48, 64, 128, 256 })
+        {
+            bitmaps.Add(new Bitmap(icon.ToBitmap(), new Size(size, size)));
+        }
+        return bitmaps;
+    }
+
+    static Dictionary<int, Bitmap> LoadOverlayImages(string folderPath)
+    {
+        return Directory.GetFiles(folderPath, "*.png")
+            .Select(file => new Bitmap(file))
+            .ToDictionary(bmp => bmp.Width);
+    }
+
+    public static Bitmap ApplyOverlay(Bitmap baseImage, Dictionary<int, Bitmap> overlays)
+    {
+        if (!overlays.TryGetValue(baseImage.Width, out var overlay))
+        {
+            return baseImage; // No overlay found for this size
+        }
+
+        Bitmap result = new Bitmap(baseImage);
+        using (Graphics g = Graphics.FromImage(result))
+        {
+            int x = baseImage.Width - overlay.Width;
+            int y = baseImage.Height - overlay.Height;
+            g.DrawImage(overlay, new Rectangle(x, y, overlay.Width, overlay.Height));
+        }
+        return result;
+    }
+
+    static Icon CreateIconFromBitmaps(List<Bitmap> bitmaps)
+    {
+        using (var ms = new MemoryStream())
+        {
+            using (var writer = new BinaryWriter(ms))
+            {
+                writer.Write((short)0); // Reserved
+                writer.Write((short)1); // Type: Icon
+                writer.Write((short)bitmaps.Count);
+
+                int dataOffset = 6 + (bitmaps.Count * 16);
+                List<byte[]> imageDataList = new List<byte[]>();
+
+                foreach (Bitmap bmp in bitmaps)
+                {
+                    byte[] bmpData = GetBitmapData(bmp);
+                    writer.Write((byte)bmp.Width);
+                    writer.Write((byte)bmp.Height);
+                    writer.Write((byte)0); // No color palette
+                    writer.Write((byte)0);
+                    writer.Write((short)1);
+                    writer.Write((short)32);
+                    writer.Write(bmpData.Length);
+                    writer.Write(dataOffset);
+                    imageDataList.Add(bmpData);
+                    dataOffset += bmpData.Length;
+                }
+
+                foreach (byte[] imageData in imageDataList)
+                {
+                    writer.Write(imageData);
+                }
+            }
+
+            return new Icon(new MemoryStream(ms.ToArray()));
+        }
+    }
+
+    static byte[] GetBitmapData(Bitmap bmp)
+    {
+        using (var ms = new MemoryStream())
+        {
+            bmp.Save(ms, ImageFormat.Png);
+            return ms.ToArray();
+        }
+    }
+
+    static void SaveIconToFile(Icon icon, string outputPath)
+    {
+        using (FileStream fs = new FileStream(outputPath, FileMode.Create))
+        {
+            icon.Save(fs);
+        }
     }
 }
