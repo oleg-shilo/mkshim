@@ -22,21 +22,19 @@ static class MkShim
 
     static void Main(string[] args)
     {
-        AppDomain.CurrentDomain.AssemblyResolve += CurrentDomain_AssemblyResolve;
+        AppDomain.CurrentDomain.AssemblyResolve += (sender, arg) =>
+        {
+            return
+                arg.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
+                arg.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
+                arg.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
+                arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
+                arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
+                arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
+                arg.Name.Contains("IconExtractor") ? Assembly.Load(Resource1.IconExtractor) :
+                null;
+        };
         main(args);
-    }
-
-    static Assembly CurrentDomain_AssemblyResolve(object sender, ResolveEventArgs args)
-    {
-        return
-            args.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
-            args.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
-            args.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
-            args.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
-            args.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
-            args.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
-            args.Name.Contains("IconExtractor") ? Assembly.Load(Resource1.IconExtractor) :
-            null;
     }
 
     static void main(string[] args)
@@ -49,6 +47,8 @@ static class MkShim
 
         if (!File.Exists(exe))
             throw new FileNotFoundException(exe);
+
+        bool noOverlay = args.Contains("--no-overlay");
 
         var defaultArgs = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
                            .Replace("\\", "\\\\")
@@ -68,7 +68,7 @@ static class MkShim
 
             (bool isWinApp, bool is64App) = exe.GetPeInfo();
 
-            var icon = exe.ExtractFirstIconToFolder(buildDir);
+            var icon = exe.ExtractFirstIconToFolder(buildDir, noOverlay);
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
             var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
 
@@ -110,6 +110,9 @@ static class MkShim
             Console.WriteLine("-p:args | --params:args");
             Console.WriteLine("    The default arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
+            Console.WriteLine("--noOverlay");
+            Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of teh shiim executable.");
+            Console.WriteLine("    By default mkshim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
             Console.WriteLine("You can use special mkshim arguments with the created shim:");
             Console.WriteLine(" --mkshim-noop");
@@ -142,7 +145,7 @@ static class MkShim
         return false;
     }
 
-    static string ExtractFirstIconToFolder(this string binFilePath, string outDir)
+    static string ExtractFirstIconToFolder(this string binFilePath, string outDir, bool noOverlay)
     {
         try
         {
@@ -153,7 +156,8 @@ static class MkShim
             using (var validIcon = Bitmap.FromFile(iconFile)) // check that it is a valid icon file
             { }
 
-            IconExtensions.ApplyOverlayToIcon(iconFile, Path.Combine(Path.GetDirectoryName(ThisAssemblyFile), "overlay"), iconFile + ".ico");
+            if (!noOverlay)
+                IconExtensions.ApplyOverlayToIcon(iconFile, Path.Combine(Path.GetDirectoryName(ThisAssemblyFile), "overlay"), iconFile);
 
             return iconFile;
         }
@@ -338,14 +342,14 @@ IDI_MAIN_ICON
     }
 }
 
-class IconExtensions
+static class IconExtensions
 {
     public static void ApplyOverlayToIcon(string iconPath, string overlayFolder, string outputPath)
     {
         using (var originalIcon = new Icon(iconPath, new Size(256, 256)))
         {
             List<Bitmap> bitmaps = ExtractBitmapsFromIcon(originalIcon);
-            var overlayImages = LoadOverlayImages(overlayFolder);
+            var overlayImages = LoadOverlayImages();
 
             List<Bitmap> modifiedBitmaps = bitmaps.Select(bmp => ApplyOverlay(bmp, overlayImages)).ToList();
 
@@ -359,18 +363,33 @@ class IconExtensions
     static List<Bitmap> ExtractBitmapsFromIcon(Icon icon)
     {
         List<Bitmap> bitmaps = new List<Bitmap>();
-        foreach (var size in new[] { 16, 32, 48, 64, 128, 256 })
+        foreach (var size in new[] { 16, 24, 32, 48, 64, 128, 256 })
         {
             bitmaps.Add(new Bitmap(icon.ToBitmap(), new Size(size, size)));
         }
         return bitmaps;
     }
 
-    static Dictionary<int, Bitmap> LoadOverlayImages(string folderPath)
+    static Dictionary<int, Bitmap> LoadOverlayImages()
     {
-        return Directory.GetFiles(folderPath, "*.png")
-            .Select(file => new Bitmap(file))
-            .ToDictionary(bmp => bmp.Width);
+        return new Dictionary<int, Bitmap>
+        {
+            { 16, Resource1.overlay_16.ToBitmap() },
+            { 24, Resource1.overlay_24.ToBitmap() },
+            { 32, Resource1.overlay_32.ToBitmap() },
+            { 48, Resource1.overlay_48.ToBitmap() },
+            { 64, Resource1.overlay_64.ToBitmap() },
+            { 128, Resource1.overlay_128.ToBitmap() },
+            { 256, Resource1.overlay_256.ToBitmap() },
+        };
+    }
+
+    static Bitmap ToBitmap(this byte[] data)
+    {
+        using (var ms = new MemoryStream(data))
+        {
+            return new Bitmap(ms);
+        }
     }
 
     public static Bitmap ApplyOverlay(Bitmap baseImage, Dictionary<int, Bitmap> overlays)

@@ -83,6 +83,76 @@ namespace mkshim {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] overlay_128 {
+            get {
+                object obj = ResourceManager.GetObject("overlay_128", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] overlay_16 {
+            get {
+                object obj = ResourceManager.GetObject("overlay_16", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] overlay_24 {
+            get {
+                object obj = ResourceManager.GetObject("overlay_24", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] overlay_256 {
+            get {
+                object obj = ResourceManager.GetObject("overlay_256", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] overlay_32 {
+            get {
+                object obj = ResourceManager.GetObject("overlay_32", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] overlay_48 {
+            get {
+                object obj = ResourceManager.GetObject("overlay_48", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
+        internal static byte[] overlay_64 {
+            get {
+                object obj = ResourceManager.GetObject("overlay_64", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] rc_exe {
             get {
                 object obj = ResourceManager.GetObject("rc_exe", resourceCulture);
