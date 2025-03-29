@@ -63,6 +63,16 @@ namespace mkshim {
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
+        internal static byte[] app {
+            get {
+                object obj = ResourceManager.GetObject("app", resourceCulture);
+                return ((byte[])(obj));
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized resource of type System.Byte[].
+        /// </summary>
         internal static byte[] ConsoleShim {
             get {
                 object obj = ResourceManager.GetObject("ConsoleShim", resourceCulture);
@@ -81,72 +91,72 @@ namespace mkshim {
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static byte[] overlay_128 {
+        internal static System.Drawing.Bitmap overlay_128 {
             get {
                 object obj = ResourceManager.GetObject("overlay_128", resourceCulture);
-                return ((byte[])(obj));
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static byte[] overlay_16 {
+        internal static System.Drawing.Bitmap overlay_16 {
             get {
                 object obj = ResourceManager.GetObject("overlay_16", resourceCulture);
-                return ((byte[])(obj));
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static byte[] overlay_24 {
+        internal static System.Drawing.Bitmap overlay_24 {
             get {
                 object obj = ResourceManager.GetObject("overlay_24", resourceCulture);
-                return ((byte[])(obj));
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static byte[] overlay_256 {
+        internal static System.Drawing.Bitmap overlay_256 {
             get {
                 object obj = ResourceManager.GetObject("overlay_256", resourceCulture);
-                return ((byte[])(obj));
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static byte[] overlay_32 {
+        internal static System.Drawing.Bitmap overlay_32 {
             get {
                 object obj = ResourceManager.GetObject("overlay_32", resourceCulture);
-                return ((byte[])(obj));
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static byte[] overlay_48 {
+        internal static System.Drawing.Bitmap overlay_48 {
             get {
                 object obj = ResourceManager.GetObject("overlay_48", resourceCulture);
-                return ((byte[])(obj));
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         
         /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
+        ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static byte[] overlay_64 {
+        internal static System.Drawing.Bitmap overlay_64 {
             get {
                 object obj = ResourceManager.GetObject("overlay_64", resourceCulture);
-                return ((byte[])(obj));
+                return ((System.Drawing.Bitmap)(obj));
             }
         }
         

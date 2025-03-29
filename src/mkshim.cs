@@ -147,9 +147,10 @@ static class MkShim
 
     static string ExtractFirstIconToFolder(this string binFilePath, string outDir, bool noOverlay)
     {
+        string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
+
         try
         {
-            string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
             using (var s = File.Create(iconFile))
                 IconExtractor.Extract1stIconTo(binFilePath, s);
 
@@ -158,11 +159,12 @@ static class MkShim
 
             if (!noOverlay)
                 IconExtensions.ApplyOverlayToIcon(iconFile, Path.Combine(Path.GetDirectoryName(ThisAssemblyFile), "overlay"), iconFile);
-
-            return iconFile;
         }
-        catch { }
-        return null;
+        catch
+        {
+            File.WriteAllBytes(iconFile, Resource1.app);
+        }
+        return iconFile;
     }
 
     static (bool isWin, bool is64) GetPeInfo(this string exe)
@@ -374,13 +376,13 @@ static class IconExtensions
     {
         return new Dictionary<int, Bitmap>
         {
-            { 16, Resource1.overlay_16.ToBitmap() },
-            { 24, Resource1.overlay_24.ToBitmap() },
-            { 32, Resource1.overlay_32.ToBitmap() },
-            { 48, Resource1.overlay_48.ToBitmap() },
-            { 64, Resource1.overlay_64.ToBitmap() },
-            { 128, Resource1.overlay_128.ToBitmap() },
-            { 256, Resource1.overlay_256.ToBitmap() },
+            { 16, Resource1.overlay_16 },
+            { 24, Resource1.overlay_24 },
+            { 32, Resource1.overlay_32  },
+            { 48, Resource1.overlay_48 },
+            { 64, Resource1.overlay_64 },
+            { 128, Resource1.overlay_128 },
+            { 256, Resource1.overlay_256 },
         };
     }
 
