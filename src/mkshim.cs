@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using static System.Environment;
 using System.IO;
@@ -23,17 +24,16 @@ static class MkShim
     static void Main(string[] args)
     {
         AppDomain.CurrentDomain.AssemblyResolve += (sender, arg) =>
-        {
-            return
-                arg.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
-                arg.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
-                arg.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
-                arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
-                arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
-                arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
-                arg.Name.Contains("IconExtractor") ? Assembly.Load(Resource1.IconExtractor) :
-                null;
-        };
+                  arg.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
+                  arg.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
+                  arg.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
+                  arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
+                  arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
+                  arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
+                  arg.Name.Contains("IconExtractor") ? Assembly.Load(Resource1.IconExtractor) :
+                  null;
+
+        // `main` needs to be in a separate method so premature assembly loading is avoided
         main(args);
     }
 
@@ -70,7 +70,12 @@ static class MkShim
 
             (bool isWinApp, bool is64App) = exe.GetPeInfo();
 
-            var icon = customIcon ?? exe.ExtractFirstIconToFolder(buildDir, noOverlay);
+            var icon =
+                customIcon ??
+                exe.LookupPackageIcon() ??
+                exe.ExtractFirstIconToFolder(buildDir, noOverlay) ??
+                exe.ExtractDefaultAppIconToFolder(buildDir);
+
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
             var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
 
@@ -103,7 +108,7 @@ static class MkShim
     {
         if (args.Contains("-h") || args.Contains("-?") || args.Contains("?") || args.Contains("-help"))
         {
-            Console.WriteLine($@"{Path.GetFileNameWithoutExtension(ThisAssemblyFile)} (v{ThisAssemblyFileVersion}) - Shim generator");
+            Console.WriteLine($@"MkShim (v{ThisAssemblyFileVersion}) - Shim generator");
             Console.WriteLine("Copyright(C) 2024 - 2025 Oleg Shilo (github.com/oleg-shilo)");
             Console.WriteLine($@"Generates shim for a given executable file.");
             Console.WriteLine();
@@ -111,17 +116,21 @@ static class MkShim
             Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params:<args>]");
             Console.WriteLine();
             Console.WriteLine("--version | -v");
-            Console.WriteLine("    Prints mkshim version.");
+            Console.WriteLine("    Prints MkShim version.");
             Console.WriteLine("--params:<args> | -p:<args>");
             Console.WriteLine("    The default arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
             Console.WriteLine("--icon:<iconfile>");
-            Console.WriteLine("    The custom icon to be embedded in the shim. If not specified then the icon of the target file will be used.");
+            Console.WriteLine("    The custom icon to be embedded in the shim. If not specified then the icon will be resolved in the following order:");
+            Console.WriteLine("    1. The application package icon will be looked up in the current and parent folder.");
+            Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
+            Console.WriteLine("    2. The icon of the target file.");
+            Console.WriteLine("    3. MkShim application icon.");
             Console.WriteLine("--noOverlay");
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
-            Console.WriteLine("    By default mkshim always creates an overlay to visually distinguish the shim from the target file.");
+            Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
-            Console.WriteLine("You can use special mkshim arguments with the created shim:");
+            Console.WriteLine("You can use special MkShim arguments with the created shim:");
             Console.WriteLine(" --mkshim-noop");
             Console.WriteLine("   Execute created shim but print <target_executable> instead of executing it.");
             Console.WriteLine(" --mkshim-test");
@@ -152,6 +161,33 @@ static class MkShim
         return false;
     }
 
+    static string LookupPackageIcon(this string binFilePath)
+    {
+        var probingDirs = new[]
+        {
+            Path.GetDirectoryName(binFilePath),
+            Path.GetDirectoryName(Path.GetDirectoryName(binFilePath))
+        };
+
+        foreach (var dir in probingDirs)
+        {
+            var iconFile = Directory.GetFiles(dir, "*.ico")
+                .FirstOrDefault(x => Path.GetFileName(x) == "favicon.ico" || Path.GetFileName(x) == Path.ChangeExtension(Path.GetFileName(binFilePath), ".ico"));
+
+            if (iconFile != null)
+                return iconFile;
+        }
+
+        return null;
+    }
+
+    static string ExtractDefaultAppIconToFolder(this string binFilePath, string outDir)
+    {
+        string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
+        File.WriteAllBytes(iconFile, Resource1.app);
+        return iconFile;
+    }
+
     static string ExtractFirstIconToFolder(this string binFilePath, string outDir, bool noOverlay)
     {
         string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
@@ -166,12 +202,10 @@ static class MkShim
 
             if (!noOverlay)
                 IconExtensions.ApplyOverlayToIcon(iconFile, Path.Combine(Path.GetDirectoryName(ThisAssemblyFile), "overlay"), iconFile);
+            return iconFile;
         }
-        catch
-        {
-            File.WriteAllBytes(iconFile, Resource1.app);
-        }
-        return iconFile;
+        catch { }
+        return null;
     }
 
     static (bool isWin, bool is64) GetPeInfo(this string exe)
