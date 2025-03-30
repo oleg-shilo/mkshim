@@ -1,15 +1,24 @@
-# mkshim
+# MkShim
 
-[Install from winget](https://winstall.app/apps/oleg-shilo.mkshim):    
+![](./src/images/app.png)
+
+## Installation
+
+MkShim implements copy-single-file deployment. You can download the executable from the latest [Release page](https://github.com/oleg-shilo/mkshim/releases) and simply run it from the desired folder. That's it.
+
+However if you want a convenient way for upgrading you can install [install MkShim from WinGet](https://winstall.app/apps/oleg-shilo.mkshim):
+
 ```
 winget install --id=oleg-shilo.mkshim  -e
-``` 
+```
 
 # Overview
 
-MKSHIM is a simple application for creating shims on Windows. 
+_Special thanks to @mdnava who helped a lot with the requirements definition and styling the product._
 
-The problem it is trying to solve is a lack of good technical solutions for executable aliases on Windows. While on linux the thangs are much simpler, on Windows synbolic links are not as efficient as they do not handle well executables that have dependencies.
+MkShim is a simple application for creating shims on Windows.
+
+The problem it is trying to solve is a lack of good technical solutions for executable aliases on Windows. While on linux the things are much simpler, on Windows symbolic links are not as efficient as they do not handle well executables that have dependencies.
 
 Chocolatey (the Package Manager for Windows) has solved this problem by implementing its own shim generation tool [ShimGen.exe](https://docs.chocolatey.org/en-us/features/shim). However this tool is not available unless the target system has Chocolatey installed.
 
