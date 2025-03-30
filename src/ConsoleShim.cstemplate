@@ -27,15 +27,19 @@ static class ConsoleShim
                 exitCode = -1;
             }
 
-            Console.WriteLine(message);
-            Console.WriteLine("Target: " + appFile);
+            var userMessage = message + Environment.NewLine + "Target: " + appFile;
+
+            userMessage.Show("MkShim: --mkshim-test");
+
             Environment.Exit(exitCode);
         }
         else if (args.Contains("--mkshim-noop"))
         {
-            Console.WriteLine("Executing shim in 'no operation' mode.");
-            Console.WriteLine("Target: " + appFile);
-            Console.WriteLine("Default params: " + defaultArgs);
+            var userMessage = "Executing shim in 'no operation' mode."+ Environment.NewLine + 
+                              "Target: " + appFile+ Environment.NewLine + 
+                              "Default params: " + defaultArgs;
+
+            userMessage.Show("MkShim: --mkshim-noop");
             Environment.Exit(0);
         }
 
@@ -106,11 +110,21 @@ static class ConsoleShim
 
 public static class Extensions
 {
+    //{isConsoleFile}
+
     public static string ToCmdArgs(IEnumerable<string> args)
     {
         return string.Join(" ",
                            args.Select(x => (x.Contains(" ") || x.Contains("\t")) ? "\""+x+"\"" : x)
                                .ToArray());
+    }
+
+    public static void Show(this string message, string context = null)
+    {
+        if(isConsole)
+            Console.WriteLine(message);
+        else
+            System.Windows.Forms.MessageBox.Show(message, context);
     }
 }
 
