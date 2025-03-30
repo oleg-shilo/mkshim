@@ -1,15 +1,24 @@
-# mkshim
+# MkShim
 
-[Install from winget](https://winstall.app/apps/oleg-shilo.mkshim):    
+![](./src/images/app.png)
+
+## Installation
+
+MkShim implements copy-single-file deployment. You can download the executable from the latest [Release page](https://github.com/oleg-shilo/mkshim/releases) and simply run it from the desired folder. That's it.
+
+However if you want a convenient way for upgrading you can install [install MkShim from WinGet](https://winstall.app/apps/oleg-shilo.mkshim):
+
 ```
 winget install --id=oleg-shilo.mkshim  -e
-``` 
+```
 
 # Overview
 
-MKSHIM is a simple application for creating shims on Windows. 
+_Special thanks to @mdnava who helped a lot with the requirements definition and styling the product._
 
-The problem it is trying to solve is a lack of good technical solutions for executable aliases on Windows. While on linux the thangs are much simpler, on Windows synbolic links are not as efficient as they do not handle well executables that have dependencies.
+MkShim is a simple application for creating shims on Windows.
+
+The problem it is trying to solve is a lack of good technical solutions for executable aliases on Windows. While on linux the things are much simpler, on Windows symbolic links are not as efficient as they do not handle well executables that have dependencies.
 
 Chocolatey (the Package Manager for Windows) has solved this problem by implementing its own shim generation tool [ShimGen.exe](https://docs.chocolatey.org/en-us/features/shim). However this tool is not available unless the target system has Chocolatey installed.
 
@@ -19,28 +28,39 @@ MkShim is a simple alternative tool that delivers the same functionality as Shim
 
 ```txt
 Usage:
-   mkshim <shim_name> <target_executable> [--params:args>]
+   mkshim <shim_name> <target_executable> [--params:<args>]
 
--v | --version
-    Prints mkshim version.
--p:args | --params:args
+--version | -v
+    Prints MkShim version.
+--params:<args> | -p:<args>
     The default arguments you always want to pass to the target executable.
     IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir="/some/path"'
+--icon:<iconfile>
+    The custom icon to be embedded in the shim. If not specified then the icon will be resolved in the following order:
+    1. The application package icon will be looked up in the current and parent folder.
+       The expected package icon name is `favicon.ico` or  `<app>.ico`.
+    2. The icon of the target file.
+    3. MkShim application icon.
+--noOverlay
+    Disable embedding 'shim' overlay to the application icon of the shim executable.
+    By default MkShim always creates an overlay to visually distinguish the shim from the target file.
 
-You can use special mkshim arguments with the created shim:
+You can use special MkShim arguments with the created shim:
  --mkshim-noop
    Execute created shim but print <target_executable> instead of executing it.
  --mkshim-test
    Tests if shim's <target_executable> exists.
-``` 
+```
 
 Thus, if you want to create a shim `ntp` for launching `notepad.exe`, then you can achieve this by simply executing the following command from the terminal:
-```
+
+```txt
 mkshim C:\ProgramData\chocolatey\bin\ntp.exe C:\Windows\System32\notepad.exe
 ```
+
 In the example above, the shim is created in the Cocolatey bin folder in the system PATH.
 
-> [!NOTE] 
+> [!NOTE]
 > The mkshim CLI parameter `--params:args` deserves special mention. It is a very powerful option for creating shims that are pre-filled with some parameters useful in cases when the user always wants to start the application with some default parameters. Some examples:
 > - Start SQL Server Management Studio with a specific DB connection
 > - Start PoewShell terminal with specefic theme
