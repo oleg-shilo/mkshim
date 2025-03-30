@@ -74,6 +74,9 @@ static class MkShim
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
             var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
 
+            if (res == null)
+                Console.WriteLine($"WARNING: Cannot generate shim resources with rc.exe. The shim file will have no MkShim related properties.");
+
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
             var cpu = (is64App ? "/platform:x64" : "");
 
