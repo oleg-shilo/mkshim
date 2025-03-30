@@ -55,6 +55,8 @@ static class MkShim
                            .Replace("\"", "\\\"")
                            ?? "";
 
+        var customIcon = args.ArgValue("--icon");
+
         if (!exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
         {
             Console.WriteLine($"You mast specify the executable file to create the shim for.");
@@ -68,7 +70,7 @@ static class MkShim
 
             (bool isWinApp, bool is64App) = exe.GetPeInfo();
 
-            var icon = exe.ExtractFirstIconToFolder(buildDir, noOverlay);
+            var icon = customIcon ?? exe.ExtractFirstIconToFolder(buildDir, noOverlay);
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
             var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
 
@@ -105,13 +107,15 @@ static class MkShim
             Console.WriteLine($@"Usage:");
             Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params:<args>]");
             Console.WriteLine();
-            Console.WriteLine("-v | --version");
+            Console.WriteLine("--version | -v");
             Console.WriteLine("    Prints mkshim version.");
-            Console.WriteLine("-p:args | --params:args");
+            Console.WriteLine("--params:<args> | -p:<args>");
             Console.WriteLine("    The default arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
+            Console.WriteLine("--icon:<iconfile>");
+            Console.WriteLine("    The custom icon to be embedded in the shim. If not specified then the icon of the target file will be used.");
             Console.WriteLine("--noOverlay");
-            Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of teh shiim executable.");
+            Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default mkshim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
             Console.WriteLine("You can use special mkshim arguments with the created shim:");
