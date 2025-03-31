@@ -14,8 +14,6 @@ winget install --id=oleg-shilo.mkshim  -e
 
 # Overview
 
-_Special thanks to @mdnava who helped a lot with the requirements definition and styling the product._
-
 MkShim is a simple application for creating shims on Windows.
 
 The problem it is trying to solve is a lack of good technical solutions for executable aliases on Windows. While on linux the things are much simpler, on Windows symbolic links are not as efficient as they do not handle well executables that have dependencies.
@@ -115,3 +113,7 @@ d:\tools\rc.exe:
         File version:   10.0.22621.3233 (WinBuild.160101.0800)
         MachineType:    64-bit
 ```
+
+## Contributions/Credits
+
+Special thanks to @mdnava who helped a lot with the requirements definition and styling the product.
