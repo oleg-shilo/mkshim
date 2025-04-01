@@ -73,8 +73,11 @@ static class MkShim
             var icon =
                 customIcon ??
                 exe.LookupPackageIcon() ??
-                exe.ExtractFirstIconToFolder(buildDir, noOverlay) ??
+                exe.ExtractFirstIconToFolder(buildDir) ??
                 exe.ExtractDefaultAppIconToFolder(buildDir);
+
+            if (!noOverlay)
+                IconExtensions.ApplyOverlayToIcon(icon);
 
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
             var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
@@ -188,7 +191,7 @@ static class MkShim
         return iconFile;
     }
 
-    static string ExtractFirstIconToFolder(this string binFilePath, string outDir, bool noOverlay)
+    static string ExtractFirstIconToFolder(this string binFilePath, string outDir)
     {
         string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
 
@@ -200,8 +203,6 @@ static class MkShim
             using (var validIcon = Bitmap.FromFile(iconFile)) // check that it is a valid icon file
             { }
 
-            if (!noOverlay)
-                IconExtensions.ApplyOverlayToIcon(iconFile, Path.Combine(Path.GetDirectoryName(ThisAssemblyFile), "overlay"), iconFile);
             return iconFile;
         }
         catch { }
@@ -388,7 +389,7 @@ IDI_MAIN_ICON
 
 static class IconExtensions
 {
-    public static void ApplyOverlayToIcon(string iconPath, string overlayFolder, string outputPath)
+    public static void ApplyOverlayToIcon(string iconPath, string outputPath = null)
     {
         using (var originalIcon = new Icon(iconPath, new Size(256, 256)))
         {
@@ -399,7 +400,7 @@ static class IconExtensions
 
             using (var newIcon = CreateIconFromBitmaps(modifiedBitmaps))
             {
-                SaveIconToFile(newIcon, outputPath);
+                SaveIconToFile(newIcon, outputPath ?? iconPath);
             }
         }
     }
