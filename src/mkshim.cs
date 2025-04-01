@@ -73,8 +73,11 @@ static class MkShim
             var icon =
                 customIcon ??
                 exe.LookupPackageIcon() ??
-                exe.ExtractFirstIconToFolder(buildDir, noOverlay) ??
+                exe.ExtractFirstIconToFolder(buildDir) ??
                 exe.ExtractDefaultAppIconToFolder(buildDir);
+
+            if (!noOverlay)
+                icon = IconExtensions.ApplyOverlayToIcon(icon, icon.ChangeDir(buildDir));
 
             var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
             var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
@@ -188,7 +191,7 @@ static class MkShim
         return iconFile;
     }
 
-    static string ExtractFirstIconToFolder(this string binFilePath, string outDir, bool noOverlay)
+    static string ExtractFirstIconToFolder(this string binFilePath, string outDir)
     {
         string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
 
@@ -200,24 +203,10 @@ static class MkShim
             using (var validIcon = Bitmap.FromFile(iconFile)) // check that it is a valid icon file
             { }
 
-            if (!noOverlay)
-                IconExtensions.ApplyOverlayToIcon(iconFile, Path.Combine(Path.GetDirectoryName(ThisAssemblyFile), "overlay"), iconFile);
             return iconFile;
         }
         catch { }
         return null;
-    }
-
-    static (bool isWin, bool is64) GetPeInfo(this string exe)
-    {
-        using (var stream = File.OpenRead(exe))
-        using (var peFile = new PEReader(stream))
-            return (!peFile.PEHeaders.IsConsoleApplication, peFile.PEHeaders.CoffHeader.Machine == Machine.Amd64);
-    }
-
-    public static string ArgValue(this string[] args, string name)
-    {
-        return args.FirstOrDefault(x => x.StartsWith($"{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
     }
 
     static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string defaultArgs)
@@ -261,11 +250,6 @@ static class MkShim
         }
         return p;
     }
-
-    // static string GetFileVersion(this string file)
-    //     => FileVersionInfo.GetVersionInfo(file).FileVersion;
-    static FileVersionInfo GetFileVersion(this string file)
-        => FileVersionInfo.GetVersionInfo(file);
 
     static string ThisAssemblyFile => Assembly.GetExecutingAssembly().Location;
     static string ThisAssemblyFileVersion => FileVersionInfo.GetVersionInfo(ThisAssemblyFile).FileVersion;
@@ -386,10 +370,30 @@ IDI_MAIN_ICON
     }
 }
 
+static class GenericExtensions
+{
+    public static string ChangeDir(this string file, string newDir)
+        => Path.Combine(newDir, Path.GetFileName(file));
+
+    public static FileVersionInfo GetFileVersion(this string file)
+        => FileVersionInfo.GetVersionInfo(file);
+
+    public static string ArgValue(this string[] args, string name)
+        => args.FirstOrDefault(x => x.StartsWith($"{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
+
+    public static (bool isWin, bool is64) GetPeInfo(this string exe)
+    {
+        using (var stream = File.OpenRead(exe))
+        using (var peFile = new PEReader(stream))
+            return (!peFile.PEHeaders.IsConsoleApplication, peFile.PEHeaders.CoffHeader.Machine == Machine.Amd64);
+    }
+}
+
 static class IconExtensions
 {
-    public static void ApplyOverlayToIcon(string iconPath, string overlayFolder, string outputPath)
+    public static string ApplyOverlayToIcon(string iconPath, string outputPath = null)
     {
+        var result = outputPath ?? iconPath;
         using (var originalIcon = new Icon(iconPath, new Size(256, 256)))
         {
             List<Bitmap> bitmaps = ExtractBitmapsFromIcon(originalIcon);
@@ -399,9 +403,11 @@ static class IconExtensions
 
             using (var newIcon = CreateIconFromBitmaps(modifiedBitmaps))
             {
-                SaveIconToFile(newIcon, outputPath);
+                SaveIconToFile(newIcon, result);
             }
         }
+
+        return result;
     }
 
     static List<Bitmap> ExtractBitmapsFromIcon(Icon icon)
