@@ -129,7 +129,7 @@ static class MkShim
             Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
             Console.WriteLine("    2. The icon of the target file.");
             Console.WriteLine("    3. MkShim application icon.");
-            Console.WriteLine("--noOverlay");
+            Console.WriteLine("--no-overlay");
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
