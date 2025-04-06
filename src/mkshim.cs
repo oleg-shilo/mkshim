@@ -14,80 +14,64 @@ using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Xml.Schema;
 using mkshim;
 using Toolbelt.Drawing;
 
 static class MkShim
 {
-    static StringBuilder compileLog = new StringBuilder();
-
     static void Main(string[] args)
     {
-        AppDomain.CurrentDomain.AssemblyResolve += (sender, arg) =>
-                  arg.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
-                  arg.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
-                  arg.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
-                  arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
-                  arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
-                  arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
-                  arg.Name.Contains("IconExtractor") ? Assembly.Load(Resource1.IconExtractor) :
-                  null;
+        try
+        {
+            AppDomain.CurrentDomain.AssemblyResolve += (sender, arg) =>
+                      arg.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
+                      arg.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
+                      arg.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
+                      arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
+                      arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
+                      arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
+                      arg.Name.Contains("IconExtractor") ? Assembly.Load(Resource1.IconExtractor) :
+                      null;
 
-        // `main` needs to be in a separate method so premature assembly loading is avoided
-        main(args);
+            // `main` needs to be in a separate method so premature assembly loading is avoided
+            main(args);
+        }
+        catch (ValidationException e)
+        {
+            Console.WriteLine(e.Message);
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine(e);
+        }
     }
 
     static void main(string[] args)
     {
-        if (HandleUserInput(args))
+        RunOptions options = args.Parse().Vaidate();
+
+        if (HandleNonRunable(options))
             return;
-
-        var shim = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0]));
-        var exe = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1]));
-
-        // check shim dir write permissions
-        if (!Path.GetDirectoryName(shim).HasWritePermissions())
-        {
-            Console.WriteLine($"Cannot write to the directory: {Path.GetDirectoryName(shim)}. Please check your permissions.");
-            return;
-        }
-
-        if (!File.Exists(exe))
-            throw new FileNotFoundException(exe);
-
-        bool noOverlay = args.Contains("--no-overlay");
-
-        var defaultArgs = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
-                           .Replace("\\", "\\\\")
-                           .Replace("\"", "\\\"")
-                           ?? "";
-
-        var customIcon = args.ArgValue("--icon");
-
-        if (!exe.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
-        {
-            Console.WriteLine($"You mast specify the executable file to create the shim for.");
-            return;
-        }
 
         var buildDir = Path.Combine(Path.GetTempPath(), $"mkshim-{Guid.NewGuid()}");
         try
         {
             Directory.CreateDirectory(buildDir);
 
-            (bool isWinApp, bool is64App) = exe.GetPeInfo();
+            (bool isWinApp, bool is64App) = options.TargetExecutable.GetPeInfo();
 
             var icon =
-                customIcon ??
-                exe.LookupPackageIcon() ??
-                exe.ExtractFirstIconToFolder(buildDir) ??
-                exe.ExtractDefaultAppIconToFolder(buildDir);
+                options.IconFile ??
+                options.TargetExecutable.LookupPackageIcon() ??
+                options.TargetExecutable.ExtractFirstIconToFolder(buildDir) ??
+                options.TargetExecutable.ExtractDefaultAppIconToFolder(buildDir);
 
-            if (!noOverlay)
+            if (!options.NoOverlay)
                 icon = IconExtensions.ApplyOverlayToIcon(icon, icon.ChangeDir(buildDir));
 
-            var csFile = exe.GetShimSourceCodeFor(buildDir, isWinApp, defaultArgs);
-            var res = exe.GenerateResFor(buildDir, defaultArgs, icon);
+            var csFile = options.TargetExecutable.GetShimSourceCodeFor(buildDir, isWinApp, options.DefaultArguments);
+            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon);
 
             if (res == null)
                 Console.WriteLine($"WARNING: Cannot generate shim resources with rc.exe. The shim file will have no MkShim related properties.");
@@ -95,14 +79,14 @@ static class MkShim
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
             var cpu = (is64App ? "/platform:x64" : "");
 
-            var build = csc.Run($"-out:\"{shim}\" {appRes} {cpu} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
+            var build = csc.Run($"-out:\"{options.ShimName}\" {appRes} {cpu} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
             build.WaitForExit();
 
             if (build.ExitCode == 0)
             {
                 Console.WriteLine($"The shim has been created");
-                Console.WriteLine($"  {shim}");
-                Console.WriteLine($"     `-> {exe}");
+                Console.WriteLine($"  {options.ShimName}");
+                Console.WriteLine($"     `-> {options.TargetExecutable}");
             }
             else
             {
@@ -112,63 +96,6 @@ static class MkShim
             }
         }
         finally { try { Directory.Delete(buildDir, true); } catch { } }
-    }
-
-    static bool HandleUserInput(string[] args)
-    {
-        if (args.Contains("-h") || args.Contains("-?") || args.Contains("?") || args.Contains("-help"))
-        {
-            Console.WriteLine($@"MkShim (v{ThisAssemblyFileVersion}) - Shim generator");
-            Console.WriteLine("Copyright(C) 2024 - 2025 Oleg Shilo (github.com/oleg-shilo)");
-            Console.WriteLine($@"Generates shim for a given executable file.");
-            Console.WriteLine();
-            Console.WriteLine($@"Usage:");
-            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params:<args>]");
-            Console.WriteLine();
-            Console.WriteLine("--version | -v");
-            Console.WriteLine("    Prints MkShim version.");
-            Console.WriteLine("--params:<args> | -p:<args>");
-            Console.WriteLine("    The default arguments you always want to pass to the target executable.");
-            Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
-            Console.WriteLine("--icon:<iconfile>");
-            Console.WriteLine("    The custom icon to be embedded in the shim. If not specified then the icon will be resolved in the following order:");
-            Console.WriteLine("    1. The application package icon will be looked up in the current and parent folder.");
-            Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
-            Console.WriteLine("    2. The icon of the target file.");
-            Console.WriteLine("    3. MkShim application icon.");
-            Console.WriteLine("--no-overlay");
-            Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
-            Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
-            Console.WriteLine();
-            Console.WriteLine("You can use special MkShim arguments with the created shim:");
-            Console.WriteLine(" --mkshim-noop");
-            Console.WriteLine("   Execute created shim but print <target_executable> instead of executing it.");
-            Console.WriteLine(" --mkshim-test");
-            Console.WriteLine("   Tests if shim's <target_executable> exists.");
-            return true;
-        }
-        else if (args.Contains("-v") || args.Contains("--version") || args.Contains("-version"))
-        {
-            Console.WriteLine(ThisAssemblyFileVersion);
-            return true;
-        }
-
-        if (!args.Any() || args.Count() < 2)
-        {
-            Console.WriteLine($@"Not enough arguments were specified. Execute 'mkshim -?' for usage help.");
-            return true;
-        }
-
-        if (Environment.OSVersion.Platform != PlatformID.Win32NT)
-        {
-            Console.WriteLine("Creating a shim to an executable file this way is only useful on Windows. On Linux you " +
-                              "have a much better option `alias`. You can use it as in the example for CS-Script executable below: " + Environment.NewLine +
-                              "alias css='dotnet /usr/local/bin/cs-script/cscs.exe'" + Environment.NewLine +
-                              "After that you can invoke CS-Script engine from anywhere by just typing 'css'.");
-            return true;
-        }
-
-        return false;
     }
 
     static string LookupPackageIcon(this string binFilePath)
@@ -375,10 +302,189 @@ IDI_MAIN_ICON
 
         return build.ExitCode == 0 ? resFile : null;
     }
+
+    class ValidationException : Exception
+    {
+        public ValidationException(string message) : base(message)
+        {
+        }
+    }
+
+    static StringBuilder compileLog = new StringBuilder();
+
+    class RunOptions
+    {
+        public string ShimName;
+        public bool OpHelp;
+        public bool OpVersion;
+        public string TargetExecutable;
+        public string DefaultArguments;
+        public string IconFile;
+        public bool NoOverlay;
+    }
+
+    static RunOptions Parse(this string[] args)
+    {
+        var options = new RunOptions();
+
+        if (args.Contains("-h") || args.Contains("-?") || args.Contains("?") || args.Contains("-help"))
+        {
+            options.OpHelp = true;
+        }
+        else if (args.Contains("-v") || args.Contains("--version") || args.Contains("-version"))
+        {
+            options.OpVersion = true;
+        }
+        else if (args.Length < 2)
+        {
+            throw new ValidationException("Not enough arguments were specified. Execute 'mkshim -?' for usage help.");
+        }
+        else
+        {
+            options.ShimName = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
+            options.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
+            options.IconFile = args.ArgValue("--icon");
+            options.NoOverlay = args.Contains("--no-overlay");
+            options.DefaultArguments = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
+                                        .Replace("\\", "\\\\")
+                                        .Replace("\"", "\\\"")
+                                         ?? "";
+        }
+        return options;
+    }
+
+    static RunOptions Vaidate(this RunOptions options)
+    {
+        // OS
+        if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+            throw new ValidationException("Creating a shim to an executable file this way is only useful on Windows. On Linux you " +
+                                          "have a much better option `alias`. You can use it as in the example for CS-Script executable below: " + Environment.NewLine +
+                                          "alias css='dotnet /usr/local/bin/cs-script/cscs.exe'" + Environment.NewLine +
+                                          "After that you can invoke CS-Script engine from anywhere by just typing 'css'.");
+
+        // target exe
+        if (!options.TargetExecutable.IsValidFilePath())
+            throw new ValidationException($"Target executable is not a valid path: {options.TargetExecutable}");
+
+        if (!File.Exists(options.TargetExecutable))
+            throw new ValidationException($"Target executable cannot be found at: {options.TargetExecutable}");
+
+        if (!options.TargetExecutable.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
+            throw new ValidationException($"Target executable path is not an executable file: {options.TargetExecutable}");
+
+        if (options.TargetExecutable.IsDirectory())
+            throw new ValidationException($"Target executable path is not an executable file but a folder: {options.TargetExecutable}");
+
+        if (!Path.GetDirectoryName(options.TargetExecutable).HasReadPermissions())
+            throw new ValidationException($"Cannot access target executable file: {Path.GetDirectoryName(options.ShimName)}. Please check your permissions.");
+
+        // shim
+        if (!options.ShimName.IsValidFilePath())
+            throw new ValidationException($"Shim is not a valid path: {options.ShimName}");
+
+        if (!options.ShimName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
+            throw new ValidationException($"Shim path is not an executable file: {options.ShimName}");
+
+        if (options.ShimName.IsDirectory())
+            throw new ValidationException($"Shim path is not an executable file but a folder: {options.ShimName}");
+
+        if (!Directory.Exists(Path.GetDirectoryName(options.ShimName)))
+            throw new ValidationException($"Shim parent directory does not exist: {Path.GetDirectoryName(options.ShimName)}");
+
+        if (!Path.GetDirectoryName(options.ShimName).HasWritePermissions())
+            throw new ValidationException($"Cannot write to the directory: {Path.GetDirectoryName(options.ShimName)}. Please check your permissions.");
+
+        // shim vs target
+        if (Path.GetFullPath(options.ShimName).ToLower() == Path.GetFullPath(options.TargetExecutable).ToLower())
+            throw new ValidationException($"Shim and target executable point to the same location. Please change shim pas to it points to the different location..");
+
+        return options;
+    }
+
+    static bool HandleNonRunable(RunOptions options)
+
+    {
+        if (options.OpVersion)
+        {
+            Console.WriteLine(ThisAssemblyFileVersion);
+            return true;
+        }
+
+        if (options.OpHelp)
+        {
+            Console.WriteLine($@"MkShim (v{ThisAssemblyFileVersion}) - Shim generator");
+            Console.WriteLine("Copyright(C) 2024 - 2025 Oleg Shilo (github.com/oleg-shilo)");
+            Console.WriteLine($@"Generates shim for a given executable file.");
+            Console.WriteLine();
+            Console.WriteLine($@"Usage:");
+            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params:<args>]");
+            Console.WriteLine();
+            Console.WriteLine("--version | -v");
+            Console.WriteLine("    Prints MkShim version.");
+            Console.WriteLine("--params:<args> | -p:<args>");
+            Console.WriteLine("    The default arguments you always want to pass to the target executable.");
+            Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
+            Console.WriteLine("--icon:<iconfile>");
+            Console.WriteLine("    The custom icon to be embedded in the shim. If not specified then the icon will be resolved in the following order:");
+            Console.WriteLine("    1. The application package icon will be looked up in the current and parent folder.");
+            Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
+            Console.WriteLine("    2. The icon of the target file.");
+            Console.WriteLine("    3. MkShim application icon.");
+            Console.WriteLine("--no-overlay");
+            Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
+            Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
+            Console.WriteLine();
+            Console.WriteLine("You can use special MkShim arguments with the created shim:");
+            Console.WriteLine(" --mkshim-noop");
+            Console.WriteLine("   Execute created shim but print <target_executable> instead of executing it.");
+            Console.WriteLine(" --mkshim-test");
+            Console.WriteLine("   Tests if shim's <target_executable> exists.");
+            return true;
+        }
+
+        return false;
+    }
 }
 
 static class GenericExtensions
 {
+    public static string EnsureExtension(this string path, string extension)
+    {
+        if (string.Compare(Path.GetExtension(path), extension, true) != 0)
+            return path + extension;
+        else
+            return path;
+    }
+
+    public static bool IsDirectory(this string path) => Directory.Exists(path);
+
+    public static bool IsValidFilePath(this string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return false;
+
+        char[] invalidChars = Path.GetInvalidPathChars();
+        return !path.Any(c => invalidChars.Contains(c));
+    }
+
+    public static bool HasReadPermissions(this string file)
+    {
+        try
+        {
+            using (var stream = File.OpenRead(file))
+            { }
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+    }
+
     public static bool HasWritePermissions(this string dir)
     {
         var alreadyExists = Directory.Exists(dir);
