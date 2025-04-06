@@ -61,6 +61,9 @@ static class MkShim
 
             (bool isWinApp, bool is64App) = options.TargetExecutable.GetPeInfo();
 
+            if (options.NoConsole)
+                isWinApp = true; // force windows app if no console option is specified
+
             var icon =
                 options.IconFile ??
                 options.TargetExecutable.LookupPackageIcon() ??
@@ -321,6 +324,7 @@ IDI_MAIN_ICON
         public string DefaultArguments;
         public string IconFile;
         public bool NoOverlay;
+        public bool NoConsole;
     }
 
     static RunOptions Parse(this string[] args)
@@ -345,6 +349,7 @@ IDI_MAIN_ICON
             options.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
             options.IconFile = args.ArgValue("--icon");
             options.NoOverlay = args.Contains("--no-overlay");
+            options.NoConsole = args.Contains("--no-console") || args.Contains("--nc");
             options.DefaultArguments = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
                                         .Replace("\\", "\\\\")
                                         .Replace("\"", "\\\"")
@@ -430,6 +435,8 @@ IDI_MAIN_ICON
             Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
             Console.WriteLine("    2. The icon of the target file.");
             Console.WriteLine("    3. MkShim application icon.");
+            Console.WriteLine("--no-console | -nc");
+            Console.WriteLine("    No console option. The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.");
             Console.WriteLine("--no-overlay");
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
