@@ -45,6 +45,13 @@ static class MkShim
         var shim = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0]));
         var exe = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1]));
 
+        // check shim dir write permissions
+        if (!Path.GetDirectoryName(shim).HasWritePermissions())
+        {
+            Console.WriteLine($"Cannot write to the directory: {Path.GetDirectoryName(shim)}. Please check your permissions.");
+            return;
+        }
+
         if (!File.Exists(exe))
             throw new FileNotFoundException(exe);
 
@@ -372,6 +379,37 @@ IDI_MAIN_ICON
 
 static class GenericExtensions
 {
+    public static bool HasWritePermissions(this string dir)
+    {
+        var alreadyExists = Directory.Exists(dir);
+        var testFile = Path.Combine(dir, "test.tmp");
+        try
+        {
+            if (!alreadyExists)
+                Directory.CreateDirectory(dir);
+            else
+                File.Create(testFile).Close(); // check if we can write to the directory
+
+            return true;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        finally
+        {
+            if (!alreadyExists && Directory.Exists(dir))
+                try { Directory.Delete(dir, true); } catch { }
+
+            if (File.Exists(testFile))
+                try { File.Delete(testFile); } catch { }
+        }
+    }
+
     public static string ChangeDir(this string file, string newDir)
         => Path.Combine(newDir, Path.GetFileName(file));
 
