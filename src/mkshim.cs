@@ -49,7 +49,7 @@ static class MkShim
 
     static void main(string[] args)
     {
-        RunOptions options = args.Parse().Vaidate();
+        RunOptions options = args.Parse().Validate();
 
         if (HandleNonRunable(options))
             return;
@@ -365,7 +365,7 @@ IDI_MAIN_ICON
         return options;
     }
 
-    static RunOptions Vaidate(this RunOptions options)
+    static RunOptions Validate(this RunOptions options)
     {
         if (!options.IsRunable)
             return options;
@@ -411,7 +411,7 @@ IDI_MAIN_ICON
 
         // shim vs target
         if (Path.GetFullPath(options.ShimName).ToLower() == Path.GetFullPath(options.TargetExecutable).ToLower())
-            throw new ValidationException($"Shim and target executable point to the same location. Please change shim pas to it points to the different location..");
+            throw new ValidationException($"Shim and target executable point to the same location. Please change shim path to point to the different location.");
 
         return options;
     }
