@@ -39,7 +39,7 @@ Usage:
        The expected package icon name is `favicon.ico` or  `<app>.ico`.
     2. The icon of the target file.
     3. MkShim application icon.
---noOverlay
+--no-overlay
     Disable embedding 'shim' overlay to the application icon of the shim executable.
     By default MkShim always creates an overlay to visually distinguish the shim from the target file.
 
@@ -116,4 +116,4 @@ d:\tools\rc.exe:
 
 ## Contributions/Credits
 
-Special thanks to @mdnava who helped a lot with the requirements definition and styling the product.
+Special thanks to @mdnava, who helped a lot with the requirements definition, testing and styling of the product.
