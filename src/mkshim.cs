@@ -73,8 +73,12 @@ static class MkShim
             if (!options.NoOverlay)
                 icon = IconExtensions.ApplyOverlayToIcon(icon, icon.ChangeDir(buildDir));
 
-            var csFile = options.TargetExecutable.GetShimSourceCodeFor(buildDir, isWinApp, options.DefaultArguments);
-            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon);
+            var targetRuntimePath = options.TargetExecutable;
+            if (options.RelativeTargetPath)
+                targetRuntimePath = options.TargetExecutable.ToRelativePathFrom(options.ShimName.GetDirName());
+
+            var csFile = options.TargetExecutable.GetShimSourceCodeFor(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath);
+            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, targetRuntimePath);
 
             if (res == null)
                 Console.WriteLine($"WARNING: Cannot generate shim resources with rc.exe. The shim file will have no MkShim related properties.");
@@ -146,15 +150,15 @@ static class MkShim
         return null;
     }
 
-    static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string defaultArgs)
+    static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath)
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
-                           .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exe}\")]")
-                           .Replace("//{appFile}", $"static string appFile = @\"{exe}\";")
+                           .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exeRuntimePath}\")]")
+                           .Replace("//{appFile}", $"static string appFile = @\"{exeRuntimePath}\";")
                            .Replace("//{isConsoleFile}", $"static bool isConsole = {(!isWinApp ? "true" : "false")};")
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};");
@@ -259,7 +263,7 @@ static class MkShim
 
     static string EscapeCSharpPath(this string path) => path.Replace("\\", "\\\\");
 
-    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile)
+    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string exeRuntimePath)
     {
         string rcFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(targetExe) + ".rc");
         string resFile = Path.ChangeExtension(rcFile, ".res");
@@ -276,10 +280,10 @@ BEGIN
     BEGIN
         BLOCK ""040904B0""  // Language: US English
         BEGIN
-            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(targetExe)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(exeRuntimePath)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
-            VALUE ""ProductName"", ""{targetExe.EscapeCSharpPath()}""
+            VALUE ""ProductName"", ""{exeRuntimePath.EscapeCSharpPath()}""
         END
     END
     BLOCK ""VarFileInfo""
@@ -318,13 +322,14 @@ IDI_MAIN_ICON
     class RunOptions
     {
         public string ShimName;
-        public bool OpHelp;
-        public bool OpVersion;
+        public bool HelpRequest;
+        public bool VersionRequest;
         public string TargetExecutable;
         public string DefaultArguments;
         public string IconFile;
         public bool NoOverlay;
         public bool NoConsole;
+        public bool RelativeTargetPath;
     }
 
     static RunOptions Parse(this string[] args)
@@ -333,11 +338,11 @@ IDI_MAIN_ICON
 
         if (args.Contains("-h") || args.Contains("-?") || args.Contains("?") || args.Contains("-help"))
         {
-            options.OpHelp = true;
+            options.HelpRequest = true;
         }
         else if (args.Contains("-v") || args.Contains("--version") || args.Contains("-version"))
         {
-            options.OpVersion = true;
+            options.VersionRequest = true;
         }
         else if (args.Length < 2)
         {
@@ -350,6 +355,7 @@ IDI_MAIN_ICON
             options.IconFile = args.ArgValue("--icon");
             options.NoOverlay = args.Contains("--no-overlay");
             options.NoConsole = args.Contains("--no-console") || args.Contains("--nc");
+            options.RelativeTargetPath = args.Contains("--relative") || args.Contains("-r");
             options.DefaultArguments = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
                                         .Replace("\\", "\\\\")
                                         .Replace("\"", "\\\"")
@@ -380,7 +386,7 @@ IDI_MAIN_ICON
         if (options.TargetExecutable.IsDirectory())
             throw new ValidationException($"Target executable path is not an executable file but a folder: {options.TargetExecutable}");
 
-        if (!Path.GetDirectoryName(options.TargetExecutable).HasReadPermissions())
+        if (!options.TargetExecutable.HasReadPermissions())
             throw new ValidationException($"Cannot access target executable file: {Path.GetDirectoryName(options.ShimName)}. Please check your permissions.");
 
         // shim
@@ -409,21 +415,29 @@ IDI_MAIN_ICON
     static bool HandleNonRunable(RunOptions options)
 
     {
-        if (options.OpVersion)
+        if (options.VersionRequest)
         {
             Console.WriteLine(ThisAssemblyFileVersion);
             return true;
         }
 
-        if (options.OpHelp)
+        if (options.HelpRequest)
         {
             Console.WriteLine($@"MkShim (v{ThisAssemblyFileVersion}) - Shim generator");
             Console.WriteLine("Copyright(C) 2024 - 2025 Oleg Shilo (github.com/oleg-shilo)");
             Console.WriteLine($@"Generates shim for a given executable file.");
             Console.WriteLine();
             Console.WriteLine($@"Usage:");
-            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [--params:<args>]");
+            Console.WriteLine($@"   mkshim <shim_name> <target_executable> [options]");
             Console.WriteLine();
+            Console.WriteLine("shim_name");
+            Console.WriteLine("    Path to the shim to be created.");
+            Console.WriteLine("    The `.exe` extension will be assumed if file path was specified without an extension.");
+            Console.WriteLine("target_executable");
+            Console.WriteLine("    Path to the target executable to be pointed to by the created shim.");
+            Console.WriteLine("    The `.exe` extension will be assumed if file path was specified without an extension.");
+            Console.WriteLine();
+            Console.WriteLine("Options:");
             Console.WriteLine("--version | -v");
             Console.WriteLine("    Prints MkShim version.");
             Console.WriteLine("--params:<args> | -p:<args>");
@@ -435,15 +449,18 @@ IDI_MAIN_ICON
             Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
             Console.WriteLine("    2. The icon of the target file.");
             Console.WriteLine("    3. MkShim application icon.");
+            Console.WriteLine("--relative | -r");
+            Console.WriteLine("    The created shim is to point to the target executable by relative path with respect to the shim location.");
             Console.WriteLine("--no-console | -nc");
             Console.WriteLine("    No console option. The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.");
             Console.WriteLine("--no-overlay");
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
+            Console.WriteLine("Runtime");
             Console.WriteLine("You can use special MkShim arguments with the created shim:");
             Console.WriteLine(" --mkshim-noop");
-            Console.WriteLine("   Execute created shim but print <target_executable> instead of executing it.");
+            Console.WriteLine("   Run created shim but print <target_executable> instead of executing it.");
             Console.WriteLine(" --mkshim-test");
             Console.WriteLine("   Tests if shim's <target_executable> exists.");
             return true;
@@ -455,6 +472,19 @@ IDI_MAIN_ICON
 
 static class GenericExtensions
 {
+    public static string ToRelativePathFrom(this string toFile, string fromDir)
+    {
+        if (fromDir.Last() != Path.DirectorySeparatorChar || fromDir.Last() != Path.AltDirectorySeparatorChar)
+            fromDir = fromDir + Path.DirectorySeparatorChar;
+
+        Uri fromUri = new Uri(fromDir);
+        Uri toUri = new Uri(toFile);
+        Uri relativeUri = fromUri.MakeRelativeUri(toUri);
+        string relativePath = Uri.UnescapeDataString(relativeUri.ToString())
+                                 .Replace('/', Path.DirectorySeparatorChar);
+        return relativePath;
+    }
+
     public static string EnsureExtension(this string path, string extension)
     {
         if (string.Compare(Path.GetExtension(path), extension, true) != 0)
@@ -522,6 +552,9 @@ static class GenericExtensions
                 try { File.Delete(testFile); } catch { }
         }
     }
+
+    public static string GetDirName(this string file)
+        => Path.GetDirectoryName(file);
 
     public static string ChangeDir(this string file, string newDir)
         => Path.Combine(newDir, Path.GetFileName(file));
