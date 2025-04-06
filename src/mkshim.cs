@@ -330,6 +330,7 @@ IDI_MAIN_ICON
         public bool NoOverlay;
         public bool NoConsole;
         public bool RelativeTargetPath;
+        public bool IsRunable => !HelpRequest && !VersionRequest;
     }
 
     static RunOptions Parse(this string[] args)
@@ -366,6 +367,9 @@ IDI_MAIN_ICON
 
     static RunOptions Vaidate(this RunOptions options)
     {
+        if (!options.IsRunable)
+            return options;
+
         // OS
         if (Environment.OSVersion.Platform != PlatformID.Win32NT)
             throw new ValidationException("Creating a shim to an executable file this way is only useful on Windows. On Linux you " +
@@ -432,35 +436,45 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("shim_name");
             Console.WriteLine("    Path to the shim to be created.");
-            Console.WriteLine("    The `.exe` extension will be assumed if file path was specified without an extension.");
+            Console.WriteLine("    The `.exe` extension will be assumed if the file path was specified without an extension.");
+            Console.WriteLine();
             Console.WriteLine("target_executable");
             Console.WriteLine("    Path to the target executable to be pointed to by the created shim.");
-            Console.WriteLine("    The `.exe` extension will be assumed if file path was specified without an extension.");
+            Console.WriteLine("    The `.exe` extension will be assumed if the file path was specified without an extension.");
             Console.WriteLine();
             Console.WriteLine("Options:");
+            Console.WriteLine();
             Console.WriteLine("--version | -v");
             Console.WriteLine("    Prints MkShim version.");
+            Console.WriteLine();
             Console.WriteLine("--params:<args> | -p:<args>");
             Console.WriteLine("    The default arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
+            Console.WriteLine();
             Console.WriteLine("--icon:<iconfile>");
             Console.WriteLine("    The custom icon to be embedded in the shim. If not specified then the icon will be resolved in the following order:");
             Console.WriteLine("    1. The application package icon will be looked up in the current and parent folder.");
             Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
             Console.WriteLine("    2. The icon of the target file.");
             Console.WriteLine("    3. MkShim application icon.");
+            Console.WriteLine();
             Console.WriteLine("--relative | -r");
-            Console.WriteLine("    The created shim is to point to the target executable by relative path with respect to the shim location.");
+            Console.WriteLine("    The created shim is to point to the target executable by the relative path with respect to the shim location.");
+            Console.WriteLine();
             Console.WriteLine("--no-console | -nc");
-            Console.WriteLine("    No console option. The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.");
+            Console.WriteLine("    No console option.");
+            Console.WriteLine("    The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.");
+            Console.WriteLine();
             Console.WriteLine("--no-overlay");
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
-            Console.WriteLine("Runtime");
+            Console.WriteLine("Runtime:");
+            Console.WriteLine();
             Console.WriteLine("You can use special MkShim arguments with the created shim:");
             Console.WriteLine(" --mkshim-noop");
             Console.WriteLine("   Run created shim but print <target_executable> instead of executing it.");
+            Console.WriteLine();
             Console.WriteLine(" --mkshim-test");
             Console.WriteLine("   Tests if shim's <target_executable> exists.");
             return true;
