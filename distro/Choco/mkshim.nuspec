@@ -1,0 +1,35 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
+    <metadata>
+        <id>mkshim</id>
+        <version>1.1.5.0</version>
+        <title>MkShim</title>
+        <authors>Oleg Shilo</authors>
+        <owners>Oleg Shilo</owners>
+        <licenseUrl>http://opensource.org/licenses/MIT</licenseUrl>
+        <projectUrl>https://github.com/oleg-shilo/mkshim</projectUrl>
+        <packageSourceUrl>https://github.com/oleg-shilo/mkshim</packageSourceUrl>
+        <bugTrackerUrl>https://github.com/oleg-shilo/mkshim/issues</bugTrackerUrl>
+        <docsUrl>https://github.com/oleg-shilo/mkshim</docsUrl>
+        <iconUrl>https://cdn.statically.io/img/raw.githubusercontent.com/oleg-shilo/mkshim/master/src/images/app.png</iconUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>MkShim is a simple application for creating shims on Windows. </description>
+        <summary>GMkShim</summary>
+        <releaseNotes>
+# Release v1.1.5.0
+- Added validation of the destination dir write and source read permissions
+- Added comprehensive validation of the input params
+- Implemented --relative | -r
+- Implemented --no-console | -nc
+
+        </releaseNotes>
+        <copyright>Oleg Shilo</copyright>
+        <tags>CLI FileSystem C# UX User-Experience</tags>
+        <dependencies>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="tools\chocolateyInstall.ps1" target="tools\chocolateyInstall.ps1" />
+        <file src="tools\chocolateyUninstall.ps1" target="tools\chocolateyUninstall.ps1" />
+    </files>
+</package>

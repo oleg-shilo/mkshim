@@ -1,0 +1,12 @@
+﻿$packageName = 'MkShim'
+$url = ???
+
+Stop-Process -Name "mkshim"
+
+$installDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
+
+$checksum = ???
+$checksumType = "sha256"
+
+# Download and unpack a zip file
+Install-ChocolateyZipPackage "$packageName" "$url" "$installDir" -checksum $checksum -checksumType $checksumType
