@@ -355,7 +355,7 @@ IDI_MAIN_ICON
             options.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
             options.IconFile = args.ArgValue("--icon");
             options.NoOverlay = args.Contains("--no-overlay");
-            options.NoConsole = args.Contains("--no-console") || args.Contains("--nc");
+            options.NoConsole = args.Contains("--no-console") || args.Contains("-nc");
             options.RelativeTargetPath = args.Contains("--relative") || args.Contains("-r");
             options.DefaultArguments = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
                                         .Replace("\\", "\\\\")
@@ -460,6 +460,7 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("--relative | -r");
             Console.WriteLine("    The created shim is to point to the target executable by the relative path with respect to the shim location.");
+            Console.WriteLine("    Note, if the shim and the taget path are pointing to the dufferent drives the resulting path will be the absolute path to the target.");
             Console.WriteLine();
             Console.WriteLine("--no-console | -nc");
             Console.WriteLine("    No console option.");
@@ -471,6 +472,7 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("Runtime:");
             Console.WriteLine();
+            Console.WriteLine("The shim always runs the target executable in a separate process");
             Console.WriteLine("You can use special MkShim arguments with the created shim:");
             Console.WriteLine(" --mkshim-noop");
             Console.WriteLine("   Run created shim but print <target_executable> instead of executing it.");

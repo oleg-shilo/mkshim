@@ -14,6 +14,7 @@ static class ConsoleShim
 {
     //{appFile}
     //{defaultArgs}
+    //{isConsoleFile}
 
     static void Main(string[] args)
     {
@@ -87,7 +88,7 @@ static class ConsoleShim
         ChildProcess.StartInfo.RedirectStandardError = false;
         ChildProcess.StartInfo.RedirectStandardOutput = false;
         ChildProcess.StartInfo.RedirectStandardInput = false;
-        ChildProcess.StartInfo.CreateNoWindow = false;
+        ChildProcess.StartInfo.CreateNoWindow = !isConsole;
         ChildProcess.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
 
         if (Environment.OSVersion.Version.Major >= 6 && toElevate)
