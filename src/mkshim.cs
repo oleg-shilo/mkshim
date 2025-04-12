@@ -403,7 +403,6 @@ IDI_MAIN_ICON
     }
 
     static bool HandleNonRunable(RunOptions options)
-
     {
         if (options.VersionRequest)
         {
