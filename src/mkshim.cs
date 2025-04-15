@@ -70,6 +70,9 @@ static class MkShim
                 options.TargetExecutable.ExtractFirstIconToFolder(buildDir) ??
                 options.TargetExecutable.ExtractDefaultAppIconToFolder(buildDir);
 
+            if (icon.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                icon = icon.ExtractFirstIconToFolder(buildDir);
+
             if (!options.NoOverlay)
                 icon = IconExtensions.ApplyOverlayToIcon(icon, icon.ChangeDir(buildDir));
 
@@ -437,7 +440,7 @@ IDI_MAIN_ICON
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
             Console.WriteLine();
             Console.WriteLine("--icon:<iconfile>");
-            Console.WriteLine("    The custom icon to be embedded in the shim. If not specified then the icon will be resolved in the following order:");
+            Console.WriteLine("    The custom icon (or exe with the app icon) to be embedded in the shim. If not specified then the icon will be resolved in the following order:");
             Console.WriteLine("    1. The application package icon will be looked up in the current and parent folder.");
             Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
             Console.WriteLine("    2. The icon of the target file.");
