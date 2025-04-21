@@ -10,7 +10,7 @@ using System;
 ServicePointManager.Expect100Continue = true;
 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
-var url = "https://github.com/oleg-shilo/mkshim/releases/download/v1.1.5.0/mkshim.zip";
+var url = "https://github.com/oleg-shilo/mkshim/releases/download/v1.2.0.0/mkshim.zip";
 
 var installScript = @"tools\chocolateyInstall.ps1";
 

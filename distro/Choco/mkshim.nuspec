@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
     <metadata>
         <id>mkshim</id>
-        <version>1.1.5.0</version>
+        <version>1.2.0.0</version>
         <title>MkShim</title>
         <authors>Oleg Shilo</authors>
         <owners>Oleg Shilo</owners>
@@ -16,12 +16,8 @@
         <description>MkShim is a simple application for creating shims on Windows. </description>
         <summary>GMkShim</summary>
         <releaseNotes>
-# Release v1.1.5.0
-- Added validation of the destination dir write and source read permissions
-- Added comprehensive validation of the input params
-- Implemented --relative | -r
-- Implemented --no-console | -nc
-
+# Release v1.2.0.0
+- Added support for `--elevate` to build shims that require elevation
         </releaseNotes>
         <copyright>Oleg Shilo</copyright>
         <tags>CLI FileSystem C# UX User-Experience</tags>

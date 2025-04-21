@@ -1,11 +1,11 @@
 $packageName = 'MkShim'
-$url = 'https://github.com/oleg-shilo/mkshim/releases/download/v1.1.5.0/mkshim.zip'
+$url = 'https://github.com/oleg-shilo/mkshim/releases/download/v1.2.0.0/mkshim.zip'
 
 Stop-Process -Name "mkshim"
 
 $installDir = "$(Split-Path -parent $MyInvocation.MyCommand.Definition)"
 
-$checksum = '6B400F70FD37C4422C6F4F484E5D81118407E17C11D6D0CC2386006669064521'
+$checksum = '38F059639BCB301521B41807B831F0C7E045D8DCC37E1EFDAEA611635CCE610B'
 $checksumType = "sha256"
 
 # Download and unpack a zip file
