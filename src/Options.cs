@@ -8,6 +8,7 @@ class RunOptions
     public string DefaultArguments;
     public string IconFile;
     public bool NoOverlay;
+    public bool ShimRequiresElevation;
     public bool NoConsole;
     public bool RelativeTargetPath;
     public bool IsRunable => !HelpRequest && !VersionRequest;

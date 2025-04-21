@@ -81,10 +81,15 @@ static class MkShim
                 targetRuntimePath = options.TargetExecutable.ToRelativePathFrom(options.ShimName.GetDirName());
 
             var csFile = options.TargetExecutable.GetShimSourceCodeFor(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath);
-            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, targetRuntimePath);
+            var manifestFile = options.ShimRequiresElevation.GetShimManifestFile(buildDir);
+            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePath);
 
             if (res == null)
+            {
                 Console.WriteLine($"WARNING: Cannot generate shim resources with rc.exe. The shim file will have no MkShim related properties.");
+                Console.WriteLine(compileLog);
+                Console.WriteLine("---");
+            }
 
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
             var cpu = (is64App ? "/platform:x64" : "");
@@ -151,6 +156,29 @@ static class MkShim
         }
         catch { }
         return null;
+    }
+
+    static string GetShimManifestFile(this bool requresElevation, string outDir)
+    {
+        string manifestFile = null;
+        if (requresElevation)
+        {
+            var manifest =
+@"<?xml version = ""1.0"" encoding = ""utf-8"" ?>
+<assembly manifestVersion = ""1.0"" xmlns = ""urn:schemas-microsoft-com:asm.v1"" >
+    <trustInfo xmlns = ""urn:schemas-microsoft-com:asm.v3"" >
+    <security >
+        <requestedPrivileges >
+            <requestedExecutionLevel level = ""requireAdministrator"" uiAccess = ""false"" />
+        </requestedPrivileges >
+    </security >
+    </trustInfo >
+</assembly >
+";
+            manifestFile = Path.Combine(outDir, "app.manifest");
+            File.WriteAllText(manifestFile, manifest, new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
+        }
+        return manifestFile;
     }
 
     static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath)
@@ -266,7 +294,7 @@ static class MkShim
 
     static string EscapeCSharpPath(this string path) => path.Replace("\\", "\\\\");
 
-    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string exeRuntimePath)
+    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string manifestFile, string exeRuntimePath)
     {
         string rcFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(targetExe) + ".rc");
         string resFile = Path.ChangeExtension(rcFile, ".res");
@@ -294,12 +322,24 @@ BEGIN
         VALUE ""Translation"", 0x0409, 1200
     END
 END
+
 ";
+
+        if (!string.IsNullOrEmpty(manifestFile))
+        {
+            // 24 = Resource type (RT_MANIFEST)
+            rcContent += $@"
+1 24 ""app.manifest""
+"
+;
+        }
+
         if (!string.IsNullOrEmpty(iconFile))
         {
             rcContent += $@"
 1 ICON ""{iconFile.EscapeCSharpPath()}""
 IDI_MAIN_ICON
+
 ";
         }
 
@@ -344,6 +384,7 @@ IDI_MAIN_ICON
             options.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
             options.IconFile = args.ArgValue("--icon");
             options.NoOverlay = args.Contains("--no-overlay");
+            options.ShimRequiresElevation = args.Contains("--elevate");
             options.NoConsole = args.Contains("--no-console") || args.Contains("-nc");
             options.RelativeTargetPath = args.Contains("--relative") || args.Contains("-r");
             options.DefaultArguments = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
@@ -457,6 +498,10 @@ IDI_MAIN_ICON
             Console.WriteLine("--no-overlay");
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
+            Console.WriteLine();
+            Console.WriteLine("--elevate");
+            Console.WriteLine("    Build the shim that requires elevation at startup.");
+            Console.WriteLine("    By default MkShim creates the shim that does not require elevation");
             Console.WriteLine();
             Console.WriteLine("Runtime:");
             Console.WriteLine();
