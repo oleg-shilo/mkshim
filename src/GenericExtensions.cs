@@ -126,8 +126,8 @@ static class IconExtensions
         catch
         {
             Console.WriteLine(
-                $"The overlay could not be applied to the requested shim icon so the icon resolution had to be reduced to allow inserting the overlay.\n" +
-                $"This can happen if the icon was extracted from the exe file. In such cases either use stand alone icon or disable overlay with `--no-overlay`");
+                $"WARNING: The icon resolution had to be reduced to allow inserting the overlay.\n" +
+                $"This can happen if the icon was extracted from the exe file. In such cases either use stand alone icon or disable overlay with `--no-overlay`.\n");
 
             originalIcon = new Icon(iconPath);
         }
