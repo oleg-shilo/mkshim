@@ -146,6 +146,13 @@ static class MkShim
 
         try
         {
+            // Cannot use ExtractAssociatedIconas it extracts only first image of the icon.
+            // Thus all other (higher resolution) images of the icon will be lost.
+            // So using IconExtractor instead.
+            // Icon icon = Icon.ExtractAssociatedIcon(binFilePath);
+            // using (var stream = new System.IO.FileStream(iconFile, System.IO.FileMode.Create))
+            //     icon.Save(stream);
+
             using (var s = File.Create(iconFile))
                 IconExtractor.Extract1stIconTo(binFilePath, s);
 
