@@ -155,7 +155,7 @@ static class IconExtensions
         }
     }
 
-    public static string ExtractFirstIconToFolder(this string binFilePath, string outDir)
+    public static string ExtractFirstIconToFolder(this string binFilePath, string outDir, bool handeErrors = false)
     {
         string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
 
@@ -202,6 +202,10 @@ static class IconExtensions
             }
         }
         catch { }
-        return null;
+
+        if (handeErrors)
+            return null;
+        else
+            throw new ApplicationException($"Cannot extract icon from '{iconFile}'");
     }
 }

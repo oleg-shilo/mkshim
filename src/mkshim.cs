@@ -37,7 +37,6 @@ static class MkShim
                       null;
 
             // `main` needs to be in a separate method so premature assembly loading is avoided
-            // Test(); return;
             main(args);
         }
         catch (ValidationException e)
@@ -70,7 +69,7 @@ static class MkShim
             var icon =
                 options.IconFile ??
                 options.TargetExecutable.LookupPackageIcon() ??
-                options.TargetExecutable.ExtractFirstIconToFolder(buildDir) ??
+                options.TargetExecutable.ExtractFirstIconToFolder(buildDir, handeErrors: true) ??
                 options.TargetExecutable.ExtractDefaultAppIconToFolder(buildDir);
 
             if (icon?.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true)
@@ -114,6 +113,10 @@ static class MkShim
                 Console.WriteLine($"Error: ");
                 Console.WriteLine(compileLog);
             }
+        }
+        catch (Exception e)
+        {
+            Console.WriteLine($"Error: {(e is ApplicationException ? e.Message : e.ToString())}");
         }
         finally { try { Directory.Delete(buildDir, true); } catch { } }
     }
@@ -192,7 +195,6 @@ static class MkShim
         p.StartInfo.FileName = exe;
         p.StartInfo.Arguments = args;
         p.StartInfo.UseShellExecute = false;
-        // ChildProcess.StartInfo.WorkingDirectory = workingDir;
         p.StartInfo.RedirectStandardError = false;
         p.StartInfo.RedirectStandardOutput = true;
         p.StartInfo.RedirectStandardInput = false;
