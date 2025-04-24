@@ -1,0 +1,4 @@
+﻿root = true
+
+[*.cs]
+csharp_space_between_double_slash_and_comment = true

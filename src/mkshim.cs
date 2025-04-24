@@ -303,6 +303,7 @@ BEGIN
             VALUE ""FileDescription"", ""Shim to {Path.GetFileName(exeRuntimePath)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
+            VALUE ""CompanyName"", ""{targetFileMetadata.CompanyName}""
             VALUE ""ProductName"", ""{exeRuntimePath.EscapeCSharpPath()}""
         END
     END

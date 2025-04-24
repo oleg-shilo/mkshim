@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("mkshim")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("ConsoleApp1")]
+[assembly: AssemblyDescription("MkShim Description")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("Oleg Shilo")]
-[assembly: AssemblyProduct("mkshim")]
-[assembly: AssemblyCopyright("Copyright © Oleg Shilo 2023-2025")]
+[assembly: AssemblyCompany("MkShim Company")]
+[assembly: AssemblyProduct("MkShim Product")]
+[assembly: AssemblyCopyright("Copyright © HP 2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -20,4 +20,14 @@ using System.Runtime.InteropServices;
 [assembly: ComVisible(false)]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM
-[assembly: Guid("7ddabb09-9da0-4011-8340-d377966e5734")]
+[assembly: Guid("aa9bc130-0519-415f-856c-2b06897f5a99")]
+
+// Version information for an assembly consists of the following four values:
+//
+//      Major Version
+//      Minor Version
+//      Build Number
+//      Revision
+//
+[assembly: AssemblyVersion("1.1.1.0")]
+[assembly: AssemblyFileVersion("1.1.1.0")]

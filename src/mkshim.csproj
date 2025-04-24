@@ -90,6 +90,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Properties\AssemblyVersion.cs" />
     <Compile Include="Utils\GenericExtensions.cs" />
     <Compile Include="Utils\IconExtensions.cs" />
     <Compile Include="IconExtractor\IconExtractor.cs" />
