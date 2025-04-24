@@ -1,121 +1,20 @@
 //css_ref IconExtractor.dll
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
-using System.Reflection.PortableExecutable;
 using mkshim;
-
-static class GenericExtensions
-{
-    public static string ToRelativePathFrom(this string toFile, string fromDir)
-    {
-        if (fromDir.Last() != Path.DirectorySeparatorChar || fromDir.Last() != Path.AltDirectorySeparatorChar)
-            fromDir = fromDir + Path.DirectorySeparatorChar;
-
-        Uri fromUri = new Uri(fromDir);
-        Uri toUri = new Uri(toFile);
-        Uri relativeUri = fromUri.MakeRelativeUri(toUri);
-        string relativePath = Uri.UnescapeDataString(relativeUri.ToString())
-                                 .Replace('/', Path.DirectorySeparatorChar);
-        return relativePath;
-    }
-
-    public static string EnsureExtension(this string path, string extension)
-    {
-        if (string.Compare(Path.GetExtension(path), extension, true) != 0)
-            return path + extension;
-        else
-            return path;
-    }
-
-    public static bool IsDirectory(this string path) => Directory.Exists(path);
-
-    public static bool IsValidFilePath(this string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-            return false;
-
-        char[] invalidChars = Path.GetInvalidPathChars();
-        return !path.Any(c => invalidChars.Contains(c));
-    }
-
-    public static bool HasReadPermissions(this string file)
-    {
-        try
-        {
-            using (var stream = File.OpenRead(file))
-            { }
-            return true;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return false;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
-    }
-
-    public static bool HasWritePermissions(this string dir)
-    {
-        var alreadyExists = Directory.Exists(dir);
-        var testFile = Path.Combine(dir, "test.tmp");
-        try
-        {
-            if (!alreadyExists)
-                Directory.CreateDirectory(dir);
-            else
-                File.Create(testFile).Close(); // check if we can write to the directory
-
-            return true;
-        }
-        catch (UnauthorizedAccessException)
-        {
-            return false;
-        }
-        catch (IOException)
-        {
-            return false;
-        }
-        finally
-        {
-            if (!alreadyExists && Directory.Exists(dir))
-                try { Directory.Delete(dir, true); } catch { }
-
-            if (File.Exists(testFile))
-                try { File.Delete(testFile); } catch { }
-        }
-    }
-
-    public static string GetDirName(this string file)
-        => Path.GetDirectoryName(file);
-
-    public static string ChangeDir(this string file, string newDir)
-        => Path.Combine(newDir, Path.GetFileName(file));
-
-    public static FileVersionInfo GetFileVersion(this string file)
-        => FileVersionInfo.GetVersionInfo(file);
-
-    public static string ArgValue(this string[] args, string name)
-        => args.FirstOrDefault(x => x.StartsWith($"{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
-
-    public static (bool isWin, bool is64) GetPeInfo(this string exe)
-    {
-        using (var stream = File.OpenRead(exe))
-        using (var peFile = new PEReader(stream))
-            return (!peFile.PEHeaders.IsConsoleApplication, peFile.PEHeaders.CoffHeader.Machine == Machine.Amd64);
-    }
-}
+using TsudaKageyu;
 
 static class IconExtensions
 {
-    public static string ApplyOverlayToIcon(string iconPath, string outputPath = null)
+    public static string ApplyOverlayToIcon(this string iconPath, string outputPath = null)
     {
+        if (iconPath == null)
+            return null;
+
         var result = outputPath ?? iconPath;
         Icon originalIcon;
 
@@ -127,7 +26,7 @@ static class IconExtensions
         {
             Console.WriteLine(
                 $"WARNING: The icon resolution had to be reduced to allow inserting the overlay.\n" +
-                $"This can happen if the icon was extracted from the exe file. In such cases either use stand alone icon or disable overlay with `--no-overlay`.\n");
+                $"This may happen if the icon was extracted from the exe file. In such cases either use stand alone icon or disable overlay with `--no-overlay`.\n");
 
             originalIcon = new Icon(iconPath);
         }
@@ -151,9 +50,13 @@ static class IconExtensions
     static List<Bitmap> ExtractBitmapsFromIcon(Icon icon)
     {
         List<Bitmap> bitmaps = new List<Bitmap>();
+        Dictionary<int, Icon> iconSizes = IconUtil.Split(icon).OrderBy(x => x.Size.Width).ToDictionary(x => x.Size.Width, y => y);
+
         foreach (var size in new[] { 16, 24, 32, 48, 64, 128, 256 })
         {
-            bitmaps.Add(new Bitmap(icon.ToBitmap(), new Size(size, size)));
+            var matchingSizeIcon = iconSizes.SkipWhile(x => x.Key < size).FirstOrDefault().Value ?? iconSizes.Last().Value;
+
+            bitmaps.Add(new Bitmap(matchingSizeIcon.ToBitmap(), new Size(size, size)));
         }
         return bitmaps;
     }
@@ -244,11 +147,61 @@ static class IconExtensions
         }
     }
 
-    static void SaveIconToFile(Icon icon, string outputPath)
+    public static void SaveIconToFile(this Icon icon, string outputPath)
     {
         using (FileStream fs = new FileStream(outputPath, FileMode.Create))
         {
             icon.Save(fs);
         }
+    }
+
+    public static string ExtractFirstIconToFolder(this string binFilePath, string outDir)
+    {
+        string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
+
+        try
+        {
+            // Cannot use ExtractAssociatedIconas it extracts only first image of the icon.
+            // Thus all other (higher resolution) images of the icon will be lost.
+            // So using IconExtractor instead.
+            // Considered alternatives:
+            // |                                     |                                                                          |
+            // |---                                  |---                                                                       |
+            // | IconLib                             | works well but somewhat degrades the resolution.                         |
+            // | Vanara                              | does not work                                                            |
+            // | ManagedShell                        | works completely looses the resolution of the icon                       |
+            // | AlphaIconExtractor                  | requires Python                                                          |
+            // | Windows API Code Pack               | possibly works but has an enormous size; the product is discontinued     |
+            // | Nirsoft IconsExt.exe                | cannot extract icons embedded with rcedit.exe; degrades the resolution   |
+            // | 7z.exe                              | does not support handling and only offers resource navigation            |
+            // | System...Icon.ExtractAssociatedIcon | loses all multi-resolution info                                          |
+            // | Custom implementation               | tried, but too tedious                                                   |
+            // Icon icon = Icon.ExtractAssociatedIcon(binFilePath);
+            // using (var stream = new System.IO.FileStream(iconFile, System.IO.FileMode.Create))
+            //     icon.Save(stream);
+
+            // Toolbelt.IconExtractor nuget package is a later version of TsudaKageyu.IconExtractor
+            // and has a bug in the Extract1stIconTo method. It does not extract the icon correctly if it was embedded into exe with rcedit.exe
+            // using (var s = File.Create(iconFile))
+            //     IconExtractor.Extract1stIconTo(binFilePath, s);
+
+            // This is rather excellent TsudaKageyu.IconExtractor
+            // It works great but it has no nuget package so integrating it as a source code since the licence allows that.
+            // https://github.com/TsudaKageyu/IconExtractor.git
+
+            var extractor = new IconExtractor(binFilePath);
+            if (extractor.Count > 0)
+            {
+                using (var icon = extractor.GetIcon(0)) // get first icon
+                    icon.SaveIconToFile(iconFile);
+
+                using (var validIcon = Bitmap.FromFile(iconFile)) // check that it is a valid icon file
+                { }
+
+                return iconFile;
+            }
+        }
+        catch { }
+        return null;
     }
 }

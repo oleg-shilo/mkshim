@@ -8,10 +8,11 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace mkshim {
+namespace mkshim
+{
     using System;
-    
-    
+
+
     /// <summary>
     ///   A strongly-typed resource class, for looking up localized strings, etc.
     /// </summary>
@@ -22,229 +23,263 @@ namespace mkshim {
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("System.Resources.Tools.StronglyTypedResourceBuilder", "17.0.0.0")]
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    internal class Resource1 {
-        
+    internal class Resource1
+    {
+
         private static global::System.Resources.ResourceManager resourceMan;
-        
+
         private static global::System.Globalization.CultureInfo resourceCulture;
-        
+
         [global::System.Diagnostics.CodeAnalysis.SuppressMessageAttribute("Microsoft.Performance", "CA1811:AvoidUncalledPrivateCode")]
-        internal Resource1() {
+        internal Resource1()
+        {
         }
-        
+
         /// <summary>
         ///   Returns the cached ResourceManager instance used by this class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Resources.ResourceManager ResourceManager {
-            get {
-                if (object.ReferenceEquals(resourceMan, null)) {
+        internal static global::System.Resources.ResourceManager ResourceManager
+        {
+            get
+            {
+                if (object.ReferenceEquals(resourceMan, null))
+                {
                     global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("mkshim.Resource1", typeof(Resource1).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
             }
         }
-        
+
         /// <summary>
         ///   Overrides the current thread's CurrentUICulture property for all
         ///   resource lookups using this strongly typed resource class.
         /// </summary>
         [global::System.ComponentModel.EditorBrowsableAttribute(global::System.ComponentModel.EditorBrowsableState.Advanced)]
-        internal static global::System.Globalization.CultureInfo Culture {
-            get {
+        internal static global::System.Globalization.CultureInfo Culture
+        {
+            get
+            {
                 return resourceCulture;
             }
-            set {
+            set
+            {
                 resourceCulture = value;
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] app {
-            get {
+        internal static byte[] app
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("app", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] ConsoleShim {
-            get {
+        internal static byte[] ConsoleShim
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("ConsoleShim", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
-        /// <summary>
-        ///   Looks up a localized resource of type System.Byte[].
-        /// </summary>
-        internal static byte[] IconExtractor {
-            get {
-                object obj = ResourceManager.GetObject("IconExtractor", resourceCulture);
-                return ((byte[])(obj));
-            }
-        }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap overlay_128 {
-            get {
+        internal static System.Drawing.Bitmap overlay_128
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("overlay_128", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap overlay_16 {
-            get {
+        internal static System.Drawing.Bitmap overlay_16
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("overlay_16", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap overlay_24 {
-            get {
+        internal static System.Drawing.Bitmap overlay_24
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("overlay_24", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap overlay_256 {
-            get {
+        internal static System.Drawing.Bitmap overlay_256
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("overlay_256", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap overlay_32 {
-            get {
+        internal static System.Drawing.Bitmap overlay_32
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("overlay_32", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap overlay_48 {
-            get {
+        internal static System.Drawing.Bitmap overlay_48
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("overlay_48", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap overlay_64 {
-            get {
+        internal static System.Drawing.Bitmap overlay_64
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("overlay_64", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] rc_exe {
-            get {
+        internal static byte[] rc_exe
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("rc_exe", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] rcdll {
-            get {
+        internal static byte[] rcdll
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("rcdll", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] ServicingCommon {
-            get {
+        internal static byte[] ServicingCommon
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("ServicingCommon", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] System_Buffers {
-            get {
+        internal static byte[] System_Buffers
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("System_Buffers", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] System_Collections_Immutable {
-            get {
+        internal static byte[] System_Collections_Immutable
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("System_Collections_Immutable", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] System_Memory {
-            get {
+        internal static byte[] System_Memory
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("System_Memory", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] System_Numerics_Vectors {
-            get {
+        internal static byte[] System_Numerics_Vectors
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("System_Numerics_Vectors", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] System_Reflection_Metadata {
-            get {
+        internal static byte[] System_Reflection_Metadata
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("System_Reflection_Metadata", resourceCulture);
                 return ((byte[])(obj));
             }
         }
-        
+
         /// <summary>
         ///   Looks up a localized resource of type System.Byte[].
         /// </summary>
-        internal static byte[] System_Runtime_CompilerServices_Unsafe {
-            get {
+        internal static byte[] System_Runtime_CompilerServices_Unsafe
+        {
+            get
+            {
                 object obj = ResourceManager.GetObject("System_Runtime_CompilerServices_Unsafe", resourceCulture);
                 return ((byte[])(obj));
             }

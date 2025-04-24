@@ -12,11 +12,14 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Reflection.PortableExecutable;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading;
 using System.Xml.Schema;
 using mkshim;
-using Toolbelt.Drawing;
+
+// using Toolbelt.Drawing;
+using TsudaKageyu;
 
 static class MkShim
 {
@@ -31,10 +34,10 @@ static class MkShim
                       arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
                       arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
                       arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
-                      arg.Name.Contains("IconExtractor") ? Assembly.Load(Resource1.IconExtractor) :
                       null;
 
             // `main` needs to be in a separate method so premature assembly loading is avoided
+            // Test(); return;
             main(args);
         }
         catch (ValidationException e)
@@ -70,11 +73,13 @@ static class MkShim
                 options.TargetExecutable.ExtractFirstIconToFolder(buildDir) ??
                 options.TargetExecutable.ExtractDefaultAppIconToFolder(buildDir);
 
-            if (icon.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+            if (icon?.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true)
+            {
                 icon = icon.ExtractFirstIconToFolder(buildDir);
+            }
 
             if (!options.NoOverlay)
-                icon = IconExtensions.ApplyOverlayToIcon(icon, icon.ChangeDir(buildDir));
+                icon = icon?.ApplyOverlayToIcon(icon.ChangeDir(buildDir));
 
             var targetRuntimePath = options.TargetExecutable;
             if (options.RelativeTargetPath)
@@ -138,31 +143,6 @@ static class MkShim
         string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
         File.WriteAllBytes(iconFile, Resource1.app);
         return iconFile;
-    }
-
-    static string ExtractFirstIconToFolder(this string binFilePath, string outDir)
-    {
-        string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
-
-        try
-        {
-            // Cannot use ExtractAssociatedIconas it extracts only first image of the icon.
-            // Thus all other (higher resolution) images of the icon will be lost.
-            // So using IconExtractor instead.
-            // Icon icon = Icon.ExtractAssociatedIcon(binFilePath);
-            // using (var stream = new System.IO.FileStream(iconFile, System.IO.FileMode.Create))
-            //     icon.Save(stream);
-
-            using (var s = File.Create(iconFile))
-                IconExtractor.Extract1stIconTo(binFilePath, s);
-
-            using (var validIcon = Bitmap.FromFile(iconFile)) // check that it is a valid icon file
-            { }
-
-            return iconFile;
-        }
-        catch { }
-        return null;
     }
 
     static string GetShimManifestFile(this bool requresElevation, string outDir)
