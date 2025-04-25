@@ -46,7 +46,7 @@ Options:
     IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir="/some/path"'
 
 --icon:<iconfile>
-    The custom icon to be embedded in the shim. If not specified then the icon will be resolved in the following order:
+    The custom icon (or exe with the app icon) to be embedded in the shim. If not specified then the icon will be resolved in the following order:
     1. The application package icon will be looked up in the current and parent folder.
        The expected package icon name is `favicon.ico` or  `<app>.ico`.
     2. The icon of the target file.
@@ -54,14 +54,33 @@ Options:
 
 --relative | -r
     The created shim is to point to the target executable by the relative path with respect to the shim location.
+    Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.
 
 --no-console | -nc
     No console option.
-    The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.
+    MkShim decided what time of shim to build (console vs window) based on the target executable type. Basically it is matching the target exe type.
+    However if your target exe is a console and for whatever reason you want to build a widow shim then you can use this option.
 
 --no-overlay
     Disable embedding 'shim' overlay to the application icon of the shim executable.
     By default MkShim always creates an overlay to visually distinguish the shim from the target file.
+
+--wait-onexit
+    Build shim that waits for user input before exiting.
+
+--elevate
+    Build the shim that requires elevation at startup.
+    By default MkShim creates the shim that does not require elevation
+
+Runtime:
+
+The shim always runs the target executable in a separate process
+You can use special MkShim arguments with the created shim:
+ --mkshim-noop
+   RunCompiler created shim but prints <target_executable> instead of executing it.
+
+ --mkshim-test
+   Tests if shim's <target_executable> exists.
 ```
 
 Thus, if you want to create a shim `ntp` for launching `notepad.exe`, then you can achieve this by simply executing the following command from the terminal:
