@@ -236,5 +236,19 @@ namespace mkshim.tests
             Assert.Contains($"Success: target file exists.", output);
             Assert.Contains($"Target: {target_exe}", output);
         }
+
+        [Fact]
+        public void manual_WinApppTest()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe");
+            _Assert.FileExists(shim_exe);
+
+            output = shim_exe.Run();
+            Assert.Contains($"Success: target file exists.", output);
+            Assert.Contains($"Target: {target_exe}", output);
+        }
     }
 }

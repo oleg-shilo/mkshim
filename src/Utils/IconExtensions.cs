@@ -47,10 +47,70 @@ static class IconExtensions
         return result;
     }
 
+    static Icon[] GetLongestSequenceOfSizes(this Icon[] icons)
+    {
+        // This is the example of sizes in Notepad first icon
+        // 48, 32, 24, 16, 48, 32, 24, 16, 256, 48, 32, 24, 16
+        // we want last 5 items as they have the most amount of sizes so have the highest resolution
+        // this is the only way as we cannot know the pixel format of the icon
+
+        // bitsPerPixel is always the same
+        //      Bitmap bmp = icon.ToBitmap())
+        //      PixelFormat format = bmp.PixelFormat;
+        //      int bitsPerPixel = Image.GetPixelFormatSize(format);
+        //
+        try
+        {
+            var result = new List<List<Icon>>();
+            var current = new List<Icon> { icons[0] };
+            int? lastDirection = null;
+
+            for (int i = 1; i < icons.Length; i++)
+            {
+                var diff = icons[i].Size.Width - icons[i - 1].Size.Width;
+                int direction = Math.Sign(diff);
+
+                if (lastDirection == null || direction == lastDirection || direction == 0)
+                {
+                    current.Add(icons[i]);
+                }
+                else
+                {
+                    if (current.Count > 1)
+                        result.Add(current);
+
+                    current = new List<Icon> { icons[i] };
+                    lastDirection = null;
+                    continue;
+                }
+
+                if (direction != 0)
+                    lastDirection = direction;
+            }
+            result.Add(current); // final one
+
+            var iconWithMostSizes = result.OrderByDescending(x => x.Count).First().ToArray();
+            return iconWithMostSizes;
+        }
+        catch
+        {
+            return icons;
+        }
+    }
+
     static List<Bitmap> ExtractBitmapsFromIcon(Icon icon)
     {
         List<Bitmap> bitmaps = new List<Bitmap>();
-        Dictionary<int, Icon> iconSizes = IconUtil.Split(icon).OrderBy(x => x.Size.Width).ToDictionary(x => x.Size.Width, y => y);
+
+        var input = IconUtil.Split(icon).GetLongestSequenceOfSizes();
+
+        // if we failed to identify the sequence we can have a mixture of sizes with duplications
+        var items = input
+            .Select(x => new { Size = x.Size.Width, Icon = x })
+            .GroupBy(x => x.Size)
+            .Select(x => x.First().Icon);
+
+        Dictionary<int, Icon> iconSizes = items.OrderBy(x => x.Size.Width).ToDictionary(x => x.Size.Width, y => y);
 
         foreach (var size in new[] { 16, 24, 32, 48, 64, 128, 256 })
         {
