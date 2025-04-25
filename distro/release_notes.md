@@ -1,3 +1,5 @@
-# Release v1.2.0.0
+# Release v1.3.0.0
 
-- added support for `--elevate` to build shims that require elevation
+- Issue #2: Implement --wait-exec
+- Issue #3: Failing to create mono.exe shim
+- Implemented complete set of automated tests
