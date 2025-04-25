@@ -36,6 +36,9 @@ namespace mkshim.tests
                 UseShellExecute = false,
                 CreateNoWindow = true
             };
+
+            Debug.WriteLine($"Run: {exe} {args}");
+
             using (var process = Process.Start(startInfo))
             {
                 process.WaitForExit();

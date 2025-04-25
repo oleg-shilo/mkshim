@@ -49,7 +49,22 @@ namespace mkshim.tests
         [Fact]
         public void RelativeTargetPath()
         {
-            throw new NotImplementedException("Relative target path test not implemented yet.");
+            // setup
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var relativeTargetPath = Path.GetRelativePath(Path.GetDirectoryName(shim_exe), target_exe);
+
+            // do
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" -r");
+            _Assert.FileExists(shim_exe);
+
+            // check
+            output = shim_exe.Run($"--mkshim-noop");
+            Assert.Contains($"Target: {target_exe}", output);
+
+            var actualTargetPath = output.GetLines().First(x => x.Contains("Target: ")).Replace("Target:", "").Trim();
+
+            Assert.Contains(relativeTargetPath, actualTargetPath);
         }
 
         [Fact]
