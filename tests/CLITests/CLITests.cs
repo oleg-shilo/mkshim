@@ -12,6 +12,36 @@ namespace mkshim.tests
         //------------------------------------------------------
 
         [Fact]
+        public void InvalidCliCommand()
+        {
+            var expectedLine = "Not enough arguments were specified";
+
+            var output = mkshim_exe.Run();
+            Assert.Contains(expectedLine, output);
+        }
+
+        [Fact]
+        public void PrintHelp()
+        {
+            var expectedLine = "Oleg Shilo (github.com/oleg-shilo)";
+
+            var output = mkshim_exe.Run("--help");
+            Assert.Contains(expectedLine, output);
+
+            output = mkshim_exe.Run("-help");
+            Assert.Contains(expectedLine, output);
+
+            output = mkshim_exe.Run("-h");
+            Assert.Contains(expectedLine, output);
+
+            output = mkshim_exe.Run("-?");
+            Assert.Contains(expectedLine, output);
+
+            output = mkshim_exe.Run("?");
+            Assert.Contains(expectedLine, output);
+        }
+
+        [Fact]
         public void PrintVersion()
         {
             var retortedVersion = mkshim_exe.Run("--version");

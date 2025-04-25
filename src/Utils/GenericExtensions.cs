@@ -1,12 +1,14 @@
 //css_ref IconExtractor.dll
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Reflection.PortableExecutable;
+using System.Runtime.CompilerServices;
 using System.Text;
 using mkshim;
 using TsudaKageyu;
@@ -103,6 +105,52 @@ static class GenericExtensions
     public static FileVersionInfo GetFileVersion(this string file)
         => FileVersionInfo.GetVersionInfo(file);
 
+    public static string ToCliISwitch(this string args)
+    {
+        return "";
+    }
+
+    public static string GetValueFor(this string[] args, string name)
+    {
+        var switches = typeof(RunOptions).GetFields()
+            .Where(x => x.Name == name)
+            .SelectMany(x => x.GetCustomAttributes(typeof(CliArgAttribute), true))
+            .Cast<CliArgAttribute>()
+            .Select(x => x.Name)
+            .FirstOrDefault()? // there can be only one DescriptionAttribute for a member
+            .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim());
+
+        foreach (var item in switches)
+        {
+            var result = args.ArgValue(item);
+            if (!string.IsNullOrEmpty(result))
+                return result;
+        }
+
+        return default;
+    }
+
+    public static bool HaveArgFor(this string[] args, string name)
+    {
+        var switches = typeof(RunOptions).GetFields()
+            .Where(x => x.Name == name)
+            .SelectMany(x => x.GetCustomAttributes(typeof(CliArgAttribute), true))
+            .Cast<CliArgAttribute>()
+            .Select(x => x.Name)
+            .FirstOrDefault()? // there can be only one CliArgAttribute for a member
+            .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim());
+
+        foreach (var item in switches)
+        {
+            if (args.Contains(item))
+                return true;
+        }
+
+        return default;
+    }
+
     public static string ArgValue(this string[] args, string name)
         => args.FirstOrDefault(x => x.StartsWith($"{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
 
@@ -135,6 +183,17 @@ static class GenericExtensions
         }
         return p;
     }
+}
+
+[AttributeUsage(AttributeTargets.Field)]
+public class CliArgAttribute : Attribute
+{
+    public CliArgAttribute(string name)
+    {
+        this.Name = name;
+    }
+
+    public string Name { get; set; }
 }
 
 class ValidationException : Exception

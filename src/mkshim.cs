@@ -329,11 +329,11 @@ IDI_MAIN_ICON
     {
         var options = new RunOptions();
 
-        if (args.Contains("-h") || args.Contains("-?") || args.Contains("?") || args.Contains("-help"))
+        if (args.HaveArgFor(nameof(options.HelpRequest)))
         {
             options.HelpRequest = true;
         }
-        else if (args.Contains("-v") || args.Contains("--version") || args.Contains("-version"))
+        else if (args.HaveArgFor(nameof(options.VersionRequest)))
         {
             options.VersionRequest = true;
         }
@@ -345,16 +345,14 @@ IDI_MAIN_ICON
         {
             options.ShimName = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
             options.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
-            options.IconFile = args.ArgValue("--icon");
-            options.NoOverlay = args.Contains("--no-overlay");
-            options.WaitBeforeExit = args.Contains("--wait-onexit");
-            options.ShimRequiresElevation = args.Contains("--elevate");
-            options.NoConsole = args.Contains("--no-console") || args.Contains("-nc");
-            options.RelativeTargetPath = args.Contains("--relative") || args.Contains("-r");
-            options.DefaultArguments = (args.ArgValue("-p") ?? args.ArgValue("--params"))?
-                                        .Replace("\\", "\\\\")
-                                        .Replace("\"", "\\\"")
-                                         ?? "";
+
+            options.IconFile = args.GetValueFor(nameof(options.IconFile));
+            options.NoOverlay = args.HaveArgFor(nameof(options.NoOverlay));
+            options.WaitBeforeExit = args.HaveArgFor(nameof(options.WaitBeforeExit));
+            options.ShimRequiresElevation = args.HaveArgFor(nameof(options.ShimRequiresElevation));
+            options.NoConsole = args.HaveArgFor(nameof(options.NoConsole));
+            options.RelativeTargetPath = args.HaveArgFor(nameof(options.RelativeTargetPath));
+            options.DefaultArguments = args.GetValueFor(nameof(options.DefaultArguments))?.Replace("\\", "\\\\").Replace("\"", "\\\"") ?? "";
         }
         return options;
     }
@@ -437,36 +435,36 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine();
-            Console.WriteLine("--version | -v"); // u-test covered
+            Console.WriteLine("--version | -v"); // u-testing covered
             Console.WriteLine("    Prints MkShim version.");
             Console.WriteLine();
-            Console.WriteLine("--params:<args> | -p:<args>"); // u-test covered
+            Console.WriteLine("--params:<args> | -p:<args>"); // u-testing covered
             Console.WriteLine("    The default arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
             Console.WriteLine();
-            Console.WriteLine("--icon:<iconfile>");
+            Console.WriteLine("--icon:<iconfile>"); // manual testing covered
             Console.WriteLine("    The custom icon (or exe with the app icon) to be embedded in the shim. If not specified then the icon will be resolved in the following order:");
             Console.WriteLine("    1. The application package icon will be looked up in the current and parent folder.");
             Console.WriteLine("       The expected package icon name is `favicon.ico` or  `<app>.ico`.");
             Console.WriteLine("    2. The icon of the target file.");
             Console.WriteLine("    3. MkShim application icon.");
             Console.WriteLine();
-            Console.WriteLine("--relative | -r"); // u-test covered
+            Console.WriteLine("--relative | -r"); // u-testing covered
             Console.WriteLine("    The created shim is to point to the target executable by the relative path with respect to the shim location.");
             Console.WriteLine("    Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.");
             Console.WriteLine();
-            Console.WriteLine("--no-console | -nc"); // u-test covered
+            Console.WriteLine("--no-console | -nc"); // u-testing covered
             Console.WriteLine("    No console option.");
             Console.WriteLine("    The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.");
             Console.WriteLine();
-            Console.WriteLine("--no-overlay");
+            Console.WriteLine("--no-overlay"); // manual testing covered
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
-            Console.WriteLine("--wait-onexit"); // u-test covered
+            Console.WriteLine("--wait-onexit"); // u-testing covered
             Console.WriteLine("    Build shim that waits for user input before exiting.");
             Console.WriteLine();
-            Console.WriteLine("--elevate");
+            Console.WriteLine("--elevate"); // manual testing covered
             Console.WriteLine("    Build the shim that requires elevation at startup.");
             Console.WriteLine("    By default MkShim creates the shim that does not require elevation");
             Console.WriteLine();
@@ -474,10 +472,10 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("The shim always runs the target executable in a separate process");
             Console.WriteLine("You can use special MkShim arguments with the created shim:");
-            Console.WriteLine(" --mkshim-noop"); // u-test covered
+            Console.WriteLine(" --mkshim-noop"); // u-testing covered
             Console.WriteLine("   RunCompiler created shim but print <target_executable> instead of executing it.");
             Console.WriteLine();
-            Console.WriteLine(" --mkshim-test"); // u-test covered
+            Console.WriteLine(" --mkshim-test"); // u-testing covered
             Console.WriteLine("   Tests if shim's <target_executable> exists.");
             return true;
         }
