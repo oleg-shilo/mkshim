@@ -72,6 +72,14 @@ static class ConsoleShim
                 }
             }
         }
+
+        bool forceToWait = false;
+        //{forceToWait}
+        if (isConsole && forceToWait)
+        {
+            Console.WriteLine("Press any key to exit...");
+            Console.ReadKey(true);
+        }
     }
 
     public static Process ChildProcess;

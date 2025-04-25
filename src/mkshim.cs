@@ -53,7 +53,7 @@ static class MkShim
     {
         RunOptions options = args.Parse().Validate();
 
-        if (HandleNonRunable(options))
+        if (HandleNonRunableInput(options))
             return;
 
         var buildDir = Path.Combine(Path.GetTempPath(), $"mkshim-{Guid.NewGuid()}");
@@ -84,8 +84,10 @@ static class MkShim
             if (options.RelativeTargetPath)
                 targetRuntimePath = options.TargetExecutable.ToRelativePathFrom(options.ShimName.GetDirName());
 
-            var csFile = options.TargetExecutable.GetShimSourceCodeFor(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath);
-            var manifestFile = options.ShimRequiresElevation.GetShimManifestFile(buildDir);
+            var csFile = options.TargetExecutable.GenerateShimSourceCode(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath, options.WaitBeforeExit);
+
+            var manifestFile = options.ShimRequiresElevation.GenerateShimManifestFile(buildDir);
+
             var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePath);
 
             if (res == null)
@@ -98,7 +100,7 @@ static class MkShim
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
             var cpu = (is64App ? "/platform:x64" : "");
 
-            var build = csc.Run($"-out:\"{options.ShimName}\" {appRes} {cpu} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"");
+            var build = csc.RunCompiler($"-out:\"{options.ShimName}\" {appRes} {cpu} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"", compileLog);
             build.WaitForExit();
 
             if (build.ExitCode == 0)
@@ -148,7 +150,7 @@ static class MkShim
         return iconFile;
     }
 
-    static string GetShimManifestFile(this bool requresElevation, string outDir)
+    static string GenerateShimManifestFile(this bool requresElevation, string outDir)
     {
         string manifestFile = null;
         if (requresElevation)
@@ -171,7 +173,7 @@ static class MkShim
         return manifestFile;
     }
 
-    static string GetShimSourceCodeFor(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath)
+    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool forceToWait)
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
@@ -182,34 +184,12 @@ static class MkShim
                            .Replace("//{appFile}", $"static string appFile = @\"{exeRuntimePath}\";")
                            .Replace("//{isConsoleFile}", $"static bool isConsole = {(!isWinApp ? "true" : "false")};")
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
-                           .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};");
+                           .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
+                           .Replace("//{forceToWait}", forceToWait ? "forceToWait = true;" : "");
 
         File.WriteAllText(csFile, code);
 
         return csFile;
-    }
-
-    static Process Run(this string exe, string args)
-    {
-        var p = new Process();
-        p.StartInfo.FileName = exe;
-        p.StartInfo.Arguments = args;
-        p.StartInfo.UseShellExecute = false;
-        p.StartInfo.RedirectStandardError = false;
-        p.StartInfo.RedirectStandardOutput = true;
-        p.StartInfo.RedirectStandardInput = false;
-        p.StartInfo.CreateNoWindow = true;
-        p.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
-
-        p.Start();
-
-        string line;
-        while (null != (line = p.StandardOutput.ReadLine()))
-        {
-            if (line.Trim() != "" && !line.Trim().StartsWith("This compiler is provided as part of the Microsoft (R) .NET Framework,"))
-                compileLog.AppendLine("> " + line);
-        }
-        return p;
     }
 
     static string ThisAssemblyFile => Assembly.GetExecutingAssembly().Location;
@@ -336,18 +316,11 @@ IDI_MAIN_ICON
         File.WriteAllText(rcFile, rcContent);
 
         // Compile the RC file to a RES file
-        var build = rc.Run(rcFile);
+        var build = rc.RunCompiler(rcFile, compileLog);
 
         build.WaitForExit();
 
         return build.ExitCode == 0 ? resFile : null;
-    }
-
-    class ValidationException : Exception
-    {
-        public ValidationException(string message) : base(message)
-        {
-        }
     }
 
     static StringBuilder compileLog = new StringBuilder();
@@ -374,6 +347,7 @@ IDI_MAIN_ICON
             options.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
             options.IconFile = args.ArgValue("--icon");
             options.NoOverlay = args.Contains("--no-overlay");
+            options.WaitBeforeExit = args.Contains("--wait-onexit");
             options.ShimRequiresElevation = args.Contains("--elevate");
             options.NoConsole = args.Contains("--no-console") || args.Contains("-nc");
             options.RelativeTargetPath = args.Contains("--relative") || args.Contains("-r");
@@ -436,7 +410,7 @@ IDI_MAIN_ICON
         return options;
     }
 
-    static bool HandleNonRunable(RunOptions options)
+    static bool HandleNonRunableInput(RunOptions options)
     {
         if (options.VersionRequest)
         {
@@ -463,10 +437,10 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("Options:");
             Console.WriteLine();
-            Console.WriteLine("--version | -v");
+            Console.WriteLine("--version | -v"); // u-test covered
             Console.WriteLine("    Prints MkShim version.");
             Console.WriteLine();
-            Console.WriteLine("--params:<args> | -p:<args>");
+            Console.WriteLine("--params:<args> | -p:<args>"); // u-test covered
             Console.WriteLine("    The default arguments you always want to pass to the target executable.");
             Console.WriteLine("    IE with chrome.exe shim: 'chrome.exe --save-page-as-mhtml --user-data-dir=\"/some/path\"'");
             Console.WriteLine();
@@ -477,17 +451,20 @@ IDI_MAIN_ICON
             Console.WriteLine("    2. The icon of the target file.");
             Console.WriteLine("    3. MkShim application icon.");
             Console.WriteLine();
-            Console.WriteLine("--relative | -r");
+            Console.WriteLine("--relative | -r"); // u-test covered
             Console.WriteLine("    The created shim is to point to the target executable by the relative path with respect to the shim location.");
             Console.WriteLine("    Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.");
             Console.WriteLine();
-            Console.WriteLine("--no-console | -nc");
+            Console.WriteLine("--no-console | -nc"); // u-test covered
             Console.WriteLine("    No console option.");
             Console.WriteLine("    The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.");
             Console.WriteLine();
             Console.WriteLine("--no-overlay");
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
+            Console.WriteLine();
+            Console.WriteLine("--wait-onexit"); // u-test covered
+            Console.WriteLine("    Build shim that waits for user input before exiting.");
             Console.WriteLine();
             Console.WriteLine("--elevate");
             Console.WriteLine("    Build the shim that requires elevation at startup.");
@@ -497,10 +474,10 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("The shim always runs the target executable in a separate process");
             Console.WriteLine("You can use special MkShim arguments with the created shim:");
-            Console.WriteLine(" --mkshim-noop");
-            Console.WriteLine("   Run created shim but print <target_executable> instead of executing it.");
+            Console.WriteLine(" --mkshim-noop"); // u-test covered
+            Console.WriteLine("   RunCompiler created shim but print <target_executable> instead of executing it.");
             Console.WriteLine();
-            Console.WriteLine(" --mkshim-test");
+            Console.WriteLine(" --mkshim-test"); // u-test covered
             Console.WriteLine("   Tests if shim's <target_executable> exists.");
             return true;
         }

@@ -7,6 +7,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Reflection.PortableExecutable;
+using System.Text;
 using mkshim;
 using TsudaKageyu;
 
@@ -110,5 +111,35 @@ static class GenericExtensions
         using (var stream = File.OpenRead(exe))
         using (var peFile = new PEReader(stream))
             return (!peFile.PEHeaders.IsConsoleApplication, peFile.PEHeaders.CoffHeader.Machine == Machine.Amd64);
+    }
+
+    public static Process RunCompiler(this string exe, string args, StringBuilder compileLog)
+    {
+        var p = new Process();
+        p.StartInfo.FileName = exe;
+        p.StartInfo.Arguments = args;
+        p.StartInfo.UseShellExecute = false;
+        p.StartInfo.RedirectStandardError = false;
+        p.StartInfo.RedirectStandardOutput = true;
+        p.StartInfo.RedirectStandardInput = false;
+        p.StartInfo.CreateNoWindow = true;
+        p.StartInfo.WindowStyle = ProcessWindowStyle.Minimized;
+
+        p.Start();
+
+        string line;
+        while (null != (line = p.StandardOutput.ReadLine()))
+        {
+            if (line.Trim() != "" && !line.Trim().StartsWith("This compiler is provided as part of the Microsoft (R) .NET Framework,"))
+                compileLog.AppendLine("> " + line);
+        }
+        return p;
+    }
+}
+
+class ValidationException : Exception
+{
+    public ValidationException(string message) : base(message)
+    {
     }
 }

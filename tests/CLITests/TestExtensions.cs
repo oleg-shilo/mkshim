@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 
 namespace mkshim.tests
@@ -26,7 +27,14 @@ namespace mkshim.tests
             return dir;
         }
 
-        public static string Run(this string exe, string args)
+        public static bool IsConsoleApp(this string exe)
+        {
+            using (var stream = File.OpenRead(exe))
+            using (var peFile = new PEReader(stream))
+                return peFile.PEHeaders.IsConsoleApplication;
+        }
+
+        public static string Run(this string exe, string args = null)
         {
             var startInfo = new ProcessStartInfo
             {
@@ -41,6 +49,35 @@ namespace mkshim.tests
 
             using (var process = Process.Start(startInfo))
             {
+                process.WaitForExit();
+                return process.StandardOutput.ReadToEnd().Trim();
+            }
+        }
+
+        public static string RunWithDelayedInput(this string exe, string args = null, string input = "", int delay = 0)
+        {
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = exe,
+                Arguments = args,
+                RedirectStandardOutput = true,
+                RedirectStandardInput = true,
+                UseShellExecute = false,
+                CreateNoWindow = true
+            };
+
+            Debug.WriteLine($"Run: {exe} {args}");
+
+            using (var process = Process.Start(startInfo))
+            {
+                Task.Delay(delay).ContinueWith(_ =>
+                {
+                    process.StandardInput.WriteLine(input);
+                    foreach (var c in input)
+                        process.StandardInput.Write(c);
+                    process.StandardInput.Close();
+                });
+
                 process.WaitForExit();
                 return process.StandardOutput.ReadToEnd().Trim();
             }

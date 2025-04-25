@@ -52,18 +52,75 @@ namespace mkshim.tests
             // setup
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
+            var shim1_exe = dir.Combine("shim1.exe");
             var relativeTargetPath = Path.GetRelativePath(Path.GetDirectoryName(shim_exe), target_exe);
 
-            // do
+            // test
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" -r");
-            _Assert.FileExists(shim_exe);
+            var output1 = mkshim_exe.Run($"\"{shim1_exe}\" \"{target_exe}\" --relative");
 
-            // check
+            _Assert.FileExists(shim_exe);
+            _Assert.FileExists(shim1_exe);
+
             output = shim_exe.Run($"--mkshim-noop");
+            output1 = shim1_exe.Run($"--mkshim-noop");
+
+            Assert.Equal(output, output1);
 
             var actualTargetPath = output.GetLines().First(x => x.Contains("Target: ")).Replace("Target:", "").Trim();
 
             Assert.Contains(relativeTargetPath, actualTargetPath);
+        }
+
+        [Fact]
+        public void NoConsoleShim()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var shim_nc_exe = dir.Combine("shimNoConsole.exe");
+            var shim_nc2_exe = dir.Combine("shimNoConsole2.exe");
+
+            mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
+            mkshim_exe.Run($"\"{shim_nc_exe}\" \"{target_exe}\" -nc");
+            mkshim_exe.Run($"\"{shim_nc2_exe}\" \"{target_exe}\" --no-console");
+
+            _Assert.FileExists(shim_exe);
+            _Assert.FileExists(shim_nc_exe);
+            _Assert.FileExists(shim_nc2_exe);
+
+            Assert.True(shim_exe.IsConsoleApp());
+            Assert.False(shim_nc_exe.IsConsoleApp());
+            Assert.False(shim_nc2_exe.IsConsoleApp());
+        }
+
+        [Fact]
+        public void WaitExecShim()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var shim_wait_exe = dir.Combine("shimWaitConsole.exe");
+
+            mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
+            mkshim_exe.Run($"\"{shim_wait_exe}\" \"{target_exe}\" --wait-onexit");
+
+            _Assert.FileExists(shim_exe);
+            _Assert.FileExists(shim_wait_exe);
+
+            // no wait app
+
+            var timestamp = Environment.TickCount;
+            shim_exe.Run();
+            var executionTime = Environment.TickCount - timestamp;
+
+            Assert.True(executionTime < 500); // less than 0.5 second
+
+            // app with waiting fro any key
+
+            timestamp = Environment.TickCount;
+            shim_wait_exe.RunWithDelayedInput("", "x", 5000);
+            executionTime = Environment.TickCount - timestamp;
+
+            Assert.True(executionTime > 500); // more than 0.5 second
         }
 
         [Fact]
