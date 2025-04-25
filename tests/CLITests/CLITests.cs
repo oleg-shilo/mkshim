@@ -4,6 +4,7 @@ namespace mkshim.tests
 {
     public class CLITests
     {
+        string mkshim_ico => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "logo.ico"));
         string mkshim_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "distro", "mkshim.exe"));
         string mkshim_version => typeof(CLITests).Assembly.GetName().Version.ToString();
         string target_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tests", "TestTargetApp", "targetapp.exe"));
@@ -238,7 +239,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void manual_WinApppTest()
+        public void manual_WinAppTest()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
@@ -249,6 +250,41 @@ namespace mkshim.tests
             output = shim_exe.Run();
             Assert.Contains($"Success: target file exists.", output);
             Assert.Contains($"Target: {target_exe}", output);
+        }
+
+        [Fact]
+        public void manual_NoConsoleShimTest()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --no-overlay");
+            _Assert.FileExists(shim_exe);
+
+            // check visually if the overlay is not present on the shim icon
+        }
+
+        [Fact]
+        public void manual_ElevatedShimTest()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --elevate");
+            _Assert.FileExists(shim_exe);
+
+            // check manually that the shim prompts for elevation
+        }
+
+        [Fact]
+        public void manual_CustomIconShimTest()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var output = mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe \"--icon:{mkshim_ico}\"");
+            _Assert.FileExists(shim_exe);
+
+            // check manually that the shim has mkshim's icon but not the notepad's one
         }
     }
 }
