@@ -60,7 +60,6 @@ namespace mkshim.tests
 
             // check
             output = shim_exe.Run($"--mkshim-noop");
-            Assert.Contains($"Target: {target_exe}", output);
 
             var actualTargetPath = output.GetLines().First(x => x.Contains("Target: ")).Replace("Target:", "").Trim();
 
