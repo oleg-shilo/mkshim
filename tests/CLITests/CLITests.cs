@@ -125,6 +125,23 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void AutoConsoleSelectionShim()
+        {
+            var dir = this.PrepareDir();
+            var shim_console_exe = dir.Combine("shim.console.exe");
+            var shim_win_exe = dir.Combine("shim.win.exe");
+
+            mkshim_exe.Run($"\"{shim_console_exe}\" \"{target_exe}\"");
+            mkshim_exe.Run($"\"{shim_win_exe}\" C:\\Windows\\notepad.exe");
+
+            _Assert.FileExists(shim_console_exe);
+            _Assert.FileExists(shim_win_exe);
+
+            Assert.True(shim_console_exe.IsConsoleApp());
+            Assert.False(shim_win_exe.IsConsoleApp());
+        }
+
+        [Fact]
         public void WaitForTargetApp()
         {
             var dir = this.PrepareDir();

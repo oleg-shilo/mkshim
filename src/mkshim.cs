@@ -455,7 +455,8 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("--no-console | -nc"); // u-testing covered
             Console.WriteLine("    No console option.");
-            Console.WriteLine("    The shim will not have console attached regardless of the PE type (console vs windows) of the target executable.");
+            Console.WriteLine("    MkShim decided what time of shim to build (console vs window) based on the target executable type. Basically it is matching the target exe type.");
+            Console.WriteLine("    However if your target exe is a console and for whatever reason you want to build a widow shim then you can use this option.");
             Console.WriteLine();
             Console.WriteLine("--no-overlay"); // manual testing covered
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
