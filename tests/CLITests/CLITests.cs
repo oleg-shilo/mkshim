@@ -124,7 +124,23 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void WaitExecShim()
+        public void WaitForTargetApp()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
+            _Assert.FileExists(shim_exe);
+
+            var timestamp = Environment.TickCount;
+            shim_exe.Run("-wait-for-5000");            // app will wait for 5 seconds.
+            var executionTime = Environment.TickCount - timestamp;
+
+            Assert.True(executionTime >= 5000);
+        }
+
+        [Fact]
+        public void WaitBeforeExitShim()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");

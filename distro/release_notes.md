@@ -2,4 +2,4 @@
 
 - Issue #2: Implement --wait-exec
 - Issue #3: Failing to create mono.exe shim
-- Implemented complete set of automated tests
+- Implemented a complete set of automated tests
