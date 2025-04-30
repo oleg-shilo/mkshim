@@ -27,6 +27,9 @@ class RunOptions
     [CliArg("--no-overlay")]
     public bool NoOverlay;
 
+    [CliArg("--console-hidden")]
+    public bool HiddenConsole;
+
     [CliArg("--wait-onexit")]
     public bool WaitBeforeExit;
 

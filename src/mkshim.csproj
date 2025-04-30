@@ -91,6 +91,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyVersion.cs" />
+    <Compile Include="Utils\ConsoleExtensions.cs" />
     <Compile Include="Utils\GenericExtensions.cs" />
     <Compile Include="Utils\IconExtensions.cs" />
     <Compile Include="IconExtractor\IconExtractor.cs" />
@@ -104,6 +105,7 @@
       <DependentUpon>Resource1.resx</DependentUpon>
     </Compile>
     <Compile Include="Options.cs" />
+    <Compile Include="Utils\ProcessExtensions.cs" />
     <None Include="ConsoleShim.cstemplate" />
     <None Include="packages.config" />
   </ItemGroup>

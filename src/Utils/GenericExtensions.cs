@@ -132,6 +132,21 @@ static class GenericExtensions
         return default;
     }
 
+    static void sample_HideConsoleWindow()
+    {
+        var thisApp = Process.GetCurrentProcess();
+
+        if (Process.GetCurrentProcess().IsDirectlyHostedByExplorer())
+        {
+            // we can check the name for being "WindowsTerminal" but there is no need since
+            // FindVisibleExternalTerminal uses window class name specific for terminal
+            // var name = thisApp.FindVisibleExternalTerminal().GetWindowThreadProcess()?.ProcessName;
+
+            thisApp.FindVisibleExternalTerminal().Hide(); // hide the terminal connected to our console
+            ConsoleExtensions.GetConsoleWindow().Hide(); // hide our own console
+        }
+    }
+
     public static bool HaveArgFor(this string[] args, string name)
     {
         var switches = typeof(RunOptions).GetFields()

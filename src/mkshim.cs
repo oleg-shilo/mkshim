@@ -173,7 +173,8 @@ static class MkShim
         return manifestFile;
     }
 
-    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool forceToWait)
+    // HiddenConsole support is not ready yet
+    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool forceToWait, bool hiddenConsole = false)
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
