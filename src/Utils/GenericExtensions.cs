@@ -136,7 +136,7 @@ static class GenericExtensions
     {
         var thisApp = Process.GetCurrentProcess();
 
-        if (Process.GetCurrentProcess().IsDirectlyHostedByExplorer())
+        if (thisApp.IsDirectlyHostedByExplorer())
         {
             // we can check the name for being "WindowsTerminal" but there is no need since
             // FindVisibleExternalTerminal uses window class name specific for terminal
