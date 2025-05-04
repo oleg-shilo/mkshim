@@ -127,8 +127,9 @@ namespace mkshim.tests
             _Assert.FileExists(shim_exe);
             _Assert.FileExists(shim1_exe);
 
-            output = shim_exe.Run($"--mkshim-noop");
-            output1 = shim1_exe.Run($"--mkshim-noop");
+            // first 3 liknes can be different (e.g. 'Build shim command:')
+            output = string.Join("\n", shim_exe.Run($"--mkshim-noop").GetLines().Skip(3));
+            output1 = string.Join("\n", shim1_exe.Run($"--mkshim-noop").GetLines().Skip(3));
 
             Assert.Equal(output, output1);
 
@@ -315,15 +316,17 @@ namespace mkshim.tests
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
+            var command = $"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"";
 
-            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"");
+            var output = mkshim_exe.Run(command);
 
             _Assert.FileExists(shim_exe);
 
             output = shim_exe.Run($"--mkshim-noop");
+
             Assert.Contains($"Target: {target_exe}", output);
             Assert.Contains($"Default params: param1 param2", output);
-            Assert.Contains($"Create shim command: mkshim  \"{target_exe}\" \"-p:param1 param2\"", output);
+            Assert.Contains($"Build shim command: mkshim " + $"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"", output);
         }
 
         [Fact]

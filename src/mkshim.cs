@@ -173,6 +173,7 @@ static class MkShim
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
+        var buildCommand = Environment.CommandLine.Replace(Assembly.GetExecutingAssembly().Location, "").Replace("\"\"", "").Replace("\\", "\\\\").Replace("\"", "\\\"").Trim();
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
@@ -182,6 +183,7 @@ static class MkShim
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
                            .Replace("//{hideConsole}", "HideConsoleWindowIfNotInTerminal();")
+                           .Replace("//{buildCommand}", buildCommand)
                            .Replace("//{setPause}", pauseBeforeExit ? "pause = true;" : "");
 
         File.WriteAllText(csFile, code);
