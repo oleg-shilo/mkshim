@@ -279,26 +279,35 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void TargetIcon_Shim()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"  \"--icon:{mkshim_ico}\" --no-overlay");
+
+            _Assert.FileExists(shim_exe);
+
+            var custom_bitmap = mkshim_ico.GetIconFirstBitmap(dir.Combine("expected.png"));
+            var bitmap_from_shim = shim_exe.GetFirstIconBitmap();
+
+            _Assert.FilesAreSame(custom_bitmap, bitmap_from_shim);
+        }
+
+        [Fact]
         public void CustomIcon_Shim()
         {
             var dir = this.PrepareDir();
-            var shim_with_custom_icon_exe = dir.Combine("shim.exe");
-            var shim_with_targete_icon_exe = dir.Combine("shim1.exe");
+            var shim_exe = dir.Combine("shim.exe");
 
-            var output = mkshim_exe.Run($"\"{shim_with_custom_icon_exe}\" C:\\Windows\\notepad.exe \"--icon:{mkshim_ico}\" --no-overlay");
-            output = mkshim_exe.Run($"\"{shim_with_targete_icon_exe}\" C:\\Windows\\notepad.exe  --no-overlay");
+            mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"  --no-overlay");
 
-            _Assert.FileExists(shim_with_custom_icon_exe);
-            _Assert.FileExists(shim_with_targete_icon_exe);
+            _Assert.FileExists(shim_exe);
 
-            var custom_bitmap_from_shim = shim_with_custom_icon_exe.GetFirstIconBitmap();
-            var target_bitmap_from_shim = shim_with_targete_icon_exe.GetFirstIconBitmap();
-            var expected_custom_bitmap = mkshim_ico.GetIconFirstBitmap(dir.Combine("expected.png"));
+            var bitmap_from_target = target_exe.GetFirstIconBitmap();
+            var bitmap_from_shim = shim_exe.GetFirstIconBitmap();
 
-            _Assert.FilesAreSame(expected_custom_bitmap, custom_bitmap_from_shim);
-            _Assert.FilesAreNotSame(target_bitmap_from_shim, custom_bitmap_from_shim);
-
-            // "explorer".Run(dir);
+            _Assert.FilesAreSame(bitmap_from_target, bitmap_from_shim);
         }
 
         [Fact]
@@ -314,6 +323,7 @@ namespace mkshim.tests
             output = shim_exe.Run($"--mkshim-noop");
             Assert.Contains($"Target: {target_exe}", output);
             Assert.Contains($"Default params: param1 param2", output);
+            Assert.Contains($"Create shim command: mkshim  \"{target_exe}\" \"-p:param1 param2\"", output);
         }
 
         [Fact]
