@@ -1,19 +1,13 @@
 using System.Diagnostics;
+using System.Drawing;
+using TsudaKageyu;
 
 namespace mkshim.tests
 {
-    public class CLITests
+    public class CLITests : CLITestBase
     {
-        string mkshim_ico => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "logo.ico"));
-        string mkshim_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "distro", "mkshim.exe"));
-        string mkshim_version => typeof(CLITests).Assembly.GetName().Version.ToString();
-        string target_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tests", "TestTargetApp", "targetapp.exe"));
-        string target_version => "1.1.1.0";
-
-        //------------------------------------------------------
-
         [Fact]
-        public void InvalidCliCommand()
+        public void Invalid_CliCommand()
         {
             var expectedLine = "Not enough arguments were specified";
 
@@ -22,7 +16,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void PrintHelp()
+        public void Print_Help()
         {
             var expectedLine = "Oleg Shilo (github.com/oleg-shilo)";
 
@@ -43,7 +37,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void HelpCoverage()
+        public void Help_Coverage()
         {
             var exectedSwitches = TestExtensions.GetCliSwitches();
 
@@ -62,7 +56,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void PrintVersion()
+        public void Print_Version()
         {
             var retortedVersion = mkshim_exe.Run("--version");
             Assert.Equal(mkshim_version, retortedVersion);
@@ -84,7 +78,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void BasicScenarioError()
+        public void BasicScenario_Error()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
@@ -97,7 +91,28 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void RelativeTargetPath()
+        public void DefaultParameters()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"");
+            _Assert.FileExists(shim_exe);
+
+            var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"--params:param1 param2\"");
+            _Assert.FileExists(shim_exe);
+            Assert.Equal(output1, output2);
+
+            var allParameters = shim_exe.Run($"param3").GetLines();
+
+            Assert.True(allParameters.Count() == 3);
+            Assert.Equal("param1", allParameters[0]);
+            Assert.Equal("param2", allParameters[1]);
+            Assert.Equal("param3", allParameters[2]);
+        }
+
+        [Fact]
+        public void Shim_Relative_TargetPath()
         {
             // setup
             var dir = this.PrepareDir();
@@ -122,27 +137,6 @@ namespace mkshim.tests
             Assert.Contains(relativeTargetPath, actualTargetPath);
         }
 
-        [Fact]
-        public void NoConsoleShim()
-        {
-            var dir = this.PrepareDir();
-            var shim_exe = dir.Combine("shim.exe");
-            var shim_nc_exe = dir.Combine("shimNoConsole.exe");
-            var shim_nc2_exe = dir.Combine("shimNoConsole2.exe");
-
-            mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
-            mkshim_exe.Run($"\"{shim_nc_exe}\" \"{target_exe}\" -nc");
-            mkshim_exe.Run($"\"{shim_nc2_exe}\" \"{target_exe}\" --no-console");
-
-            _Assert.FileExists(shim_exe);
-            _Assert.FileExists(shim_nc_exe);
-            _Assert.FileExists(shim_nc2_exe);
-
-            Assert.True(shim_exe.IsConsoleApp());
-            Assert.False(shim_nc_exe.IsConsoleApp());
-            Assert.False(shim_nc2_exe.IsConsoleApp());
-        }
-
         [Theory]
         [InlineData("--console"), InlineData("-c"), InlineData("--console-hidden"), InlineData("-ch")]
         public void Forced_ShimConsoleType_Selection(string @switch)
@@ -159,7 +153,7 @@ namespace mkshim.tests
 
         [Theory]
         [InlineData("--win"), InlineData("-w")]
-        public void Forced_ShimWinType_Selection(string @switch)
+        public void ShimWinType_Forced_Selection(string @switch)
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
@@ -172,7 +166,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void AutoShimAppTypeSelection()
+        public void ShimAppType_Auto_Selection()
         {
             var dir = this.PrepareDir();
             var shim_console_exe = dir.Combine("shim.console.exe");
@@ -189,7 +183,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void WaitForTargetApp()
+        public void Wait_For_TargetApp()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
@@ -205,7 +199,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void PauseBeforeExitShim()
+        public void Pause_BeforeExit_Shim()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
@@ -230,7 +224,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void InjectShimResources()
+        public void Inject_ShimResources()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
@@ -245,6 +239,66 @@ namespace mkshim.tests
             Assert.Contains($"Prod version:\t{target_version}", output);
             Assert.Contains($"File version:\t{target_version}", output);
             Assert.Contains($"Company:\tMkShim Company", output);
+        }
+
+        [Fact]
+        public void AppIcon_Overlay()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim-overlay.exe");
+            var shim_nooverlay_exe = dir.Combine("shim-no-overlay.exe");
+            var overlay_file = dir.Combine("overlay.png");
+
+            mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe");
+            mkshim_exe.Run($"\"{shim_nooverlay_exe}\" C:\\Windows\\notepad.exe --no-overlay");
+
+            _Assert.FileExists(shim_exe);
+            _Assert.FileExists(shim_nooverlay_exe);
+
+            // it will extract first bitmap of the first icon that is a 32x32 bitmap
+            var bitmap_file = shim_exe.GetFirstIconBitmap();
+            var bitmap_nooverlay_file = shim_nooverlay_exe.GetFirstIconBitmap();
+
+            var testManually = false;
+
+            if (!testManually)
+            {
+                mkshim_overlay_32.CropLeftBottomOverlayAndSaveTo(dir.Combine("overlay.png"));
+
+                bool found = overlay_file.IsInImageQuadrant(bitmap_file, SearchQuadrant.BottomLeft);
+                Assert.True(found);
+
+                found = overlay_file.IsInImageQuadrant(bitmap_nooverlay_file, SearchQuadrant.BottomLeft);
+                Assert.False(found);
+            }
+            else
+            {
+                Process.Start(new ProcessStartInfo { FileName = bitmap_file, UseShellExecute = true });           // that the overlay is present on shim_with_custom_icon_exe
+                Process.Start(new ProcessStartInfo { FileName = bitmap_nooverlay_file, UseShellExecute = true }); // that the overlay is not present on shim_nooverlay_exe
+            }
+        }
+
+        [Fact]
+        public void CustomIcon_Shim()
+        {
+            var dir = this.PrepareDir();
+            var shim_with_custom_icon_exe = dir.Combine("shim.exe");
+            var shim_with_targete_icon_exe = dir.Combine("shim1.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_with_custom_icon_exe}\" C:\\Windows\\notepad.exe \"--icon:{mkshim_ico}\" --no-overlay");
+            output = mkshim_exe.Run($"\"{shim_with_targete_icon_exe}\" C:\\Windows\\notepad.exe  --no-overlay");
+
+            _Assert.FileExists(shim_with_custom_icon_exe);
+            _Assert.FileExists(shim_with_targete_icon_exe);
+
+            var custom_bitmap_from_shim = shim_with_custom_icon_exe.GetFirstIconBitmap();
+            var target_bitmap_from_shim = shim_with_targete_icon_exe.GetFirstIconBitmap();
+            var expected_custom_bitmap = mkshim_ico.GetIconFirstBitmap(dir.Combine("expected.png"));
+
+            _Assert.FilesAreSame(expected_custom_bitmap, custom_bitmap_from_shim);
+            _Assert.FilesAreNotSame(target_bitmap_from_shim, custom_bitmap_from_shim);
+
+            // "explorer".Run(dir);
         }
 
         [Fact]
@@ -307,62 +361,22 @@ namespace mkshim.tests
             Assert.True(targetExecutionTime > 4500); // 5 seconds or more
         }
 
-        [Fact]
-        public void DefaultParameters()
-        {
-            var dir = this.PrepareDir();
-            var shim_exe = dir.Combine("shim.exe");
-
-            var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"");
-            _Assert.FileExists(shim_exe);
-
-            var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"--params:param1 param2\"");
-            _Assert.FileExists(shim_exe);
-            Assert.Equal(output1, output2);
-
-            var allParameters = shim_exe.Run($"param3").GetLines();
-
-            Assert.True(allParameters.Count() == 3);
-            Assert.Equal("param1", allParameters[0]);
-            Assert.Equal("param2", allParameters[1]);
-            Assert.Equal("param3", allParameters[2]);
-        }
-
-        [Fact]
+        // [Fact]
+        [Fact(Skip = "Manual test. Uncomment `\"explorer\".Run(...)` and test the shim for hidden console...")]
         public void manual_HiddenConsoleShim_Test()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
 
-            var output = mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe ");
+            var output = mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe --console-hidden");
             _Assert.FileExists(shim_exe);
+            Assert.True(shim_exe.IsConsoleApp());
 
-            Assert.Fail("Check manually that the shim is hidden");
-
-            // Uncomment the next line and check visually if the overlay is present on the shim icon
-            // shim_exe.Run();
+            // "explorer".Run(dir);
         }
 
-        [Fact]
-        public void manual_OverlayTest()
-        {
-            var dir = this.PrepareDir();
-            var shim_exe = dir.Combine("shim.exe");
-            var shim_nooverlay_exe = dir.Combine("shim-no.exe");
-
-            mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe");
-            mkshim_exe.Run($"\"{shim_nooverlay_exe}\" C:\\Windows\\notepad.exe --no-overlay");
-
-            _Assert.FileExists(shim_exe);
-            _Assert.FileExists(shim_nooverlay_exe);
-
-            Assert.Fail("Check manually that the shim has overlay icon and the nooverlay shim does not have it");
-            // Check visually if the overlay
-            // - is present on shim_exe
-            // - is not present on shim_nooverlay_exe
-        }
-
-        [Fact]
+        // [Fact]
+        [Fact(Skip = "Manual test. Uncomment `\"explorer\".Run(...)` and check visually if the shim prompts for elevation.")]
         public void manual_ElevatedShimTest()
         {
             var dir = this.PrepareDir();
@@ -371,21 +385,7 @@ namespace mkshim.tests
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --elevate");
             _Assert.FileExists(shim_exe);
 
-            Assert.Fail("Check manually that the shim prompts for elevation");
-
-            // check manually that the shim prompts for elevation
-        }
-
-        [Fact]
-        public void manual_CustomIconShimTest()
-        {
-            var dir = this.PrepareDir();
-            var shim_exe = dir.Combine("shim.exe");
-            var output = mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe \"--icon:{mkshim_ico}\"");
-            _Assert.FileExists(shim_exe);
-
-            Assert.Fail("Check manually that the shim has mkshim's icon but not the notepad's one");
-            // check manually that the shim has mkshim's icon but not the notepad's one
+            // "explorer".Run(dir);
         }
     }
 }

@@ -9,6 +9,9 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="..\..\src\IconExtractor\IconExtractor.cs" Link="shared\IconExtractor.cs" />
+        <Compile Include="..\..\src\IconExtractor\IconUtil.cs" Link="shared\IconUtil.cs" />
+        <Compile Include="..\..\src\IconExtractor\NativeMethods.cs" Link="shared\NativeMethods.cs" />
         <Compile Include="..\..\src\Options.cs" Link="shared\Options.cs" />
         <Compile Include="..\..\src\Properties\AssemblyVersion.cs" Link="AssemblyVersion.cs" />
     </ItemGroup>
@@ -16,6 +19,7 @@
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.0" />
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+        <PackageReference Include="System.Drawing.Common" Version="9.0.4" />
         <PackageReference Include="xunit" Version="2.5.3" />
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
     </ItemGroup>
