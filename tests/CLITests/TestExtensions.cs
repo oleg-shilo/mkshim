@@ -1,9 +1,21 @@
 using System.Diagnostics;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
+using Microsoft.VisualStudio.TestPlatform.Utilities;
 
 namespace mkshim.tests
 {
+    static class Profiler
+    {
+        public static int Measure(Action action)
+        {
+            var timestamp = Environment.TickCount;
+            action();
+            return Environment.TickCount - timestamp;
+        }
+    }
+
     static class _Assert
     {
         public static void FileExists(this string path, [CallerMemberName] string caller = null, [CallerFilePath] string file = null, [CallerLineNumber] int line = -1)
@@ -34,7 +46,25 @@ namespace mkshim.tests
                 return peFile.PEHeaders.IsConsoleApplication;
         }
 
-        public static string Run(this string exe, string args = null)
+        public static string[] GetCliSwitches()
+        {
+            var switches = typeof(RunOptions).GetFields()
+                .Where(x =>
+                {
+                    return x.GetCustomAttributes(typeof(ObsoleteAttribute), true).Count() == 0
+                        && x.GetCustomAttributes(typeof(CliArgAttribute), true).Count() > 0;
+                })
+                .SelectMany(x => x.GetCustomAttributes(typeof(CliArgAttribute), true))
+                .Cast<CliArgAttribute>()
+                .Select(x => x.Name)
+                // .Select(x => x.Name.Split('|').First())
+                .Select(x => x.Trim())
+                .ToArray();
+
+            return switches;
+        }
+
+        public static string Run(this string exe, string args = null, bool ignoreOutput = false)
         {
             var startInfo = new ProcessStartInfo
             {
@@ -50,7 +80,10 @@ namespace mkshim.tests
             using (var process = Process.Start(startInfo))
             {
                 process.WaitForExit();
-                return process.StandardOutput.ReadToEnd().Trim();
+                if (ignoreOutput)
+                    return "";
+                else
+                    return process.StandardOutput.ReadToEnd().Trim();
             }
         }
 

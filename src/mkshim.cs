@@ -27,17 +27,9 @@ static class MkShim
     {
         try
         {
-            AppDomain.CurrentDomain.AssemblyResolve += (sender, arg) =>
-                      arg.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
-                      arg.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
-                      arg.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
-                      arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
-                      arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
-                      arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
-                      null;
-
-            // `main` needs to be in a separate method so premature assembly loading is avoided
-            main(args);
+            // `Run` needs to be a separate method so premature assembly loading is avoided before we set up the assembly probing
+            SetupAssemblyProbing();
+            Run(args);
         }
         catch (ValidationException e)
         {
@@ -49,7 +41,7 @@ static class MkShim
         }
     }
 
-    static void main(string[] args)
+    static void Run(string[] args)
     {
         RunOptions options = args.Parse().Validate();
 
@@ -63,8 +55,11 @@ static class MkShim
 
             (bool isWinApp, bool is64App) = options.TargetExecutable.GetPeInfo();
 
-            if (options.NoConsole)
-                isWinApp = true; // force windows app if no console option is specified
+            // check if the app selection was forced by the user input
+            if (options.Windows)
+                isWinApp = true;
+            else if (options.Console || options.ConsoleHidden)
+                isWinApp = false;
 
             var icon =
                 options.IconFile ??
@@ -84,7 +79,7 @@ static class MkShim
             if (options.RelativeTargetPath)
                 targetRuntimePath = options.TargetExecutable.ToRelativePathFrom(options.ShimName.GetDirName());
 
-            var csFile = options.TargetExecutable.GenerateShimSourceCode(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath, options.WaitBeforeExit);
+            var csFile = options.TargetExecutable.GenerateShimSourceCode(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath, options.WaitPause, options.ConsoleHidden);
 
             var manifestFile = options.ShimRequiresElevation.GenerateShimManifestFile(buildDir);
 
@@ -174,7 +169,7 @@ static class MkShim
     }
 
     // HiddenConsole support is not ready yet
-    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool forceToWait, bool hiddenConsole = false)
+    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool pauseBeforeExit, bool hiddenConsole)
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
@@ -186,7 +181,8 @@ static class MkShim
                            .Replace("//{isConsoleFile}", $"static bool isConsole = {(!isWinApp ? "true" : "false")};")
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
-                           .Replace("//{forceToWait}", forceToWait ? "forceToWait = true;" : "");
+                           .Replace("//{hideConsole}", "HideConsoleWindowIfNotInTerminal();")
+                           .Replace("//{setPause}", pauseBeforeExit ? "pause = true;" : "");
 
         File.WriteAllText(csFile, code);
 
@@ -349,11 +345,14 @@ IDI_MAIN_ICON
 
             options.IconFile = args.GetValueFor(nameof(options.IconFile));
             options.NoOverlay = args.HaveArgFor(nameof(options.NoOverlay));
-            options.WaitBeforeExit = args.HaveArgFor(nameof(options.WaitBeforeExit));
             options.ShimRequiresElevation = args.HaveArgFor(nameof(options.ShimRequiresElevation));
-            options.NoConsole = args.HaveArgFor(nameof(options.NoConsole));
             options.RelativeTargetPath = args.HaveArgFor(nameof(options.RelativeTargetPath));
             options.DefaultArguments = args.GetValueFor(nameof(options.DefaultArguments))?.Replace("\\", "\\\\").Replace("\"", "\\\"") ?? "";
+            options.WaitPause = args.HaveArgFor(nameof(options.WaitPause));
+            options.NoConsole = args.HaveArgFor(nameof(options.NoConsole));
+            options.Windows = args.HaveArgFor(nameof(options.Windows));
+            options.Console = args.HaveArgFor(nameof(options.Console));
+            options.ConsoleHidden = args.HaveArgFor(nameof(options.ConsoleHidden));
         }
         return options;
     }
@@ -463,12 +462,32 @@ IDI_MAIN_ICON
             Console.WriteLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.");
             Console.WriteLine("    By default MkShim always creates an overlay to visually distinguish the shim from the target file.");
             Console.WriteLine();
-            Console.WriteLine("--wait-onexit"); // u-testing covered
+            Console.WriteLine("--wait-pause"); // u-testing covered
             Console.WriteLine("    Build shim that waits for user input before exiting.");
+            Console.WriteLine("    It is an equivalent of the command `pause` in batch file.");
             Console.WriteLine();
             Console.WriteLine("--elevate"); // manual testing covered
             Console.WriteLine("    Build the shim that requires elevation at startup.");
             Console.WriteLine("    By default MkShim creates the shim that does not require elevation");
+            Console.WriteLine();
+            Console.WriteLine("--win|-w"); // u-testing covered
+            Console.WriteLine("    Forces the shim application to be a window (GUI) application regardless the target application type.");
+            Console.WriteLine("    A window application has no console window attached to the process. Like Windows Notepad application.");
+            Console.WriteLine("    Note, such application will return immediately if it is executed from the batch file or console.");
+            Console.WriteLine("    See https://github.com/oleg-shilo/mkshim/wiki#use-cases");
+            Console.WriteLine();
+            Console.WriteLine("--console|-c"); // u-testing covered
+            Console.WriteLine("    Forces the shim application to be a console application regardless the target application type.");
+            Console.WriteLine("    Note, such application will not return if it is executed from the batch file or console until the target application exits..");
+            Console.WriteLine("    See https://github.com/oleg-shilo/mkshim/wiki#use-cases");
+            Console.WriteLine();
+            Console.WriteLine("--console-hidden|-ch"); // u-testing covered
+            Console.WriteLine("    This switch is a full equivalent of `--console` switch. But during the execution it hides.");
+            Console.WriteLine("    Note, such application will not return if it is executed from the batch file or console until the target application exits..");
+            Console.WriteLine("    See https://github.com/oleg-shilo/mkshim/wiki#use-cases");
+            Console.WriteLine();
+            Console.WriteLine("--help|-help|-h|-?|?"); // u-testing covered
+            Console.WriteLine("    Prints this help content.");
             Console.WriteLine();
             Console.WriteLine("Runtime:");
             Console.WriteLine();
@@ -483,5 +502,17 @@ IDI_MAIN_ICON
         }
 
         return false;
+    }
+
+    private static void SetupAssemblyProbing()
+    {
+        AppDomain.CurrentDomain.AssemblyResolve += (sender, arg) =>
+                                arg.Name.Contains("System.Buffers") ? Assembly.Load(Resource1.System_Buffers) :
+                                arg.Name.Contains("System.Collections.Immutable") ? Assembly.Load(Resource1.System_Collections_Immutable) :
+                                arg.Name.Contains("System.Memory") ? Assembly.Load(Resource1.System_Memory) :
+                                arg.Name.Contains("System.Numerics.Vectors") ? Assembly.Load(Resource1.System_Numerics_Vectors) :
+                                arg.Name.Contains("System.Reflection.Metadata") ? Assembly.Load(Resource1.System_Reflection_Metadata) :
+                                arg.Name.Contains("System.Runtime.CompilerServices.Unsafe") ? Assembly.Load(Resource1.System_Runtime_CompilerServices_Unsafe) :
+                                null;
     }
 }

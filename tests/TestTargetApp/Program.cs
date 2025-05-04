@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -16,8 +17,18 @@ namespace ConsoleApp1
                 Console.WriteLine(arg);
             }
 
+            var logFile = "";
+            if (args.Contains("-log-events-to"))
+            {
+                logFile = args.SkipWhile(x => x.StartsWith("-")).FirstOrDefault(x => x != "-log-events-to");
+                File.WriteAllText(logFile, DateTime.Now.ToString("s") + ": target started\r\n");
+            }
+
             if (args.Contains("-wait-for-5000"))
                 Thread.Sleep(5000);
+
+            if (logFile != "")
+                File.AppendAllText(logFile, DateTime.Now.ToString("s") + ": target exited");
         }
     }
 }

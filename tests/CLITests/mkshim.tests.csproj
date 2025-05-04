@@ -9,6 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <Compile Include="..\..\src\Options.cs" Link="shared\Options.cs" />
         <Compile Include="..\..\src\Properties\AssemblyVersion.cs" Link="AssemblyVersion.cs" />
     </ItemGroup>
 
@@ -21,6 +22,10 @@
 
     <ItemGroup>
         <Using Include="Xunit" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="shared\" />
     </ItemGroup>
 
 </Project>

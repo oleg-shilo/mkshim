@@ -1,4 +1,5 @@
 //css_ref IconExtractor.dll
+using System;
 using System.ComponentModel;
 
 class RunOptions
@@ -21,20 +22,43 @@ class RunOptions
     [CliArg("--relative|-r")]
     public bool RelativeTargetPath;
 
-    [CliArg("--no-console|-nc")]
-    public bool NoConsole;
+    [CliArg("--elevate")]
+    public bool ShimRequiresElevation;
 
     [CliArg("--no-overlay")]
     public bool NoOverlay;
 
-    [CliArg("--console-hidden")]
-    public bool HiddenConsole;
+    //---------------------------------------
+    [CliArg("--console|-c")]
+    public bool Console;
+
+    [CliArg("--console-hidden|-ch")]
+    public bool ConsoleHidden;
+
+    [CliArg("--win|-w")]
+    public bool Windows;
+
+    [CliArg("--no-console|-nc")]
+    [Obsolete("Replaced with --win")]
+    public bool NoConsole;
 
     [CliArg("--wait-onexit")]
+    [Obsolete("Replaced with --wait-pause")]
     public bool WaitBeforeExit;
 
-    [CliArg("--elevate")]
-    public bool ShimRequiresElevation;
+    [CliArg("--wait-pause")]
+    public bool WaitPause;
 
     public bool IsRunable => !HelpRequest && !VersionRequest;
+}
+
+[AttributeUsage(AttributeTargets.Field)]
+public class CliArgAttribute : Attribute
+{
+    public CliArgAttribute(string name)
+    {
+        this.Name = name;
+    }
+
+    public string Name { get; set; }
 }

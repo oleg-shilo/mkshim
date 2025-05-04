@@ -142,8 +142,8 @@ static class GenericExtensions
             // FindVisibleExternalTerminal uses window class name specific for terminal
             // var name = thisApp.FindVisibleExternalTerminal().GetWindowThreadProcess()?.ProcessName;
 
-            thisApp.FindVisibleExternalTerminal().Hide(); // hide the terminal connected to our console
-            ConsoleExtensions.GetConsoleWindow().Hide(); // hide our own console
+            thisApp.FindVisibleExternalTerminal().Hide(); // hide the terminal connected to our console; required for Win10+
+            ConsoleExtensions.GetConsoleWindow().Hide(); // hide our own console; will handle console on older Windows
         }
     }
 
@@ -199,17 +199,6 @@ static class GenericExtensions
         }
         return p;
     }
-}
-
-[AttributeUsage(AttributeTargets.Field)]
-public class CliArgAttribute : Attribute
-{
-    public CliArgAttribute(string name)
-    {
-        this.Name = name;
-    }
-
-    public string Name { get; set; }
 }
 
 class ValidationException : Exception
