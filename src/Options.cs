@@ -39,11 +39,11 @@ class RunOptions
     public bool Windows;
 
     [CliArg("--no-console|-nc")]
-    [Obsolete("Replaced with --win")]
+    [Obsolete("Use --win instead.")]
     public bool NoConsole;
 
     [CliArg("--wait-onexit")]
-    [Obsolete("Replaced with --wait-pause")]
+    [Obsolete("Use --wait-pause instead.")]
     public bool WaitBeforeExit;
 
     [CliArg("--wait-pause")]

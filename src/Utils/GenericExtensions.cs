@@ -11,6 +11,7 @@ using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Xml.Linq;
 using mkshim;
 using TsudaKageyu;
 
@@ -109,6 +110,31 @@ static class GenericExtensions
     public static string ToCliISwitch(this string args)
     {
         return "";
+    }
+
+    public static void ValidateCliArgs(this string[] args)
+    {
+        var obsoleteSwitches = typeof(RunOptions).GetFields()
+            .Select(x => new
+            {
+                Obsolete = x.GetCustomAttributes(typeof(ObsoleteAttribute), true).Cast<ObsoleteAttribute>().FirstOrDefault()?.Message,
+                Args = x.GetCustomAttributes(typeof(CliArgAttribute), true).Cast<CliArgAttribute>()
+                    .Select(y => y.Name)
+                    .FirstOrDefault()? // there can be only one DescriptionAttribute for a member
+                    .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(y => y.Trim())
+                    .ToArray()
+            })
+            .Where(x => x.Obsolete != null && x.Args.Any());
+
+        foreach (var item in obsoleteSwitches)
+        {
+            foreach (var obsoleteArg in item.Args)
+            {
+                if (args.Contains(obsoleteArg))
+                    throw new ValidationException($"The switch '{obsoleteArg}' is obsolete. {item.Obsolete}");
+            }
+        }
     }
 
     public static string GetValueFor(this string[] args, string name)

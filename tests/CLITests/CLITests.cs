@@ -66,6 +66,17 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void Report_Obsolete_CliArgs()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --wait-onexit");
+
+            Assert.Contains("\"Use --wait-pause instead.\"", output);
+        }
+
+        [Fact]
         public void BasicScenario()
         {
             var dir = this.PrepareDir();

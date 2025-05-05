@@ -326,6 +326,8 @@ IDI_MAIN_ICON
 
     static RunOptions Parse(this string[] args)
     {
+        args.ValidateCliArgs();
+
         var options = new RunOptions();
 
         if (args.HaveArgFor(nameof(options.HelpRequest)))
