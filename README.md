@@ -65,19 +65,39 @@ Options:
     Disable embedding 'shim' overlay to the application icon of the shim executable.
     By default MkShim always creates an overlay to visually distinguish the shim from the target file.
 
---wait-onexit
+--wait-pause
     Build shim that waits for user input before exiting.
+    It is an equivalent of the command `pause` in batch file.
 
 --elevate
     Build the shim that requires elevation at startup.
     By default MkShim creates the shim that does not require elevation
+
+--win|-w
+    Forces the shim application to be a window (GUI) application regardless the target application type.
+    A window application has no console window attached to the process. Like Windows Notepad application.
+    Note, such application will return immediately if it is executed from the batch file or console.
+    See https://github.com/oleg-shilo/mkshim/wiki#use-cases
+
+--console|-c
+    Forces the shim application to be a console application regardless the target application type.
+    Note, such application will not return if it is executed from the batch file or console until the target application exits..
+    See https://github.com/oleg-shilo/mkshim/wiki#use-cases
+
+--console-hidden|-ch
+    This switch is a full equivalent of `--console` switch. But during the execution it hides.
+    Note, such application will not return if it is executed from the batch file or console until the target application exits..
+    See https://github.com/oleg-shilo/mkshim/wiki#use-cases
+
+--help|-help|-h|-?|?
+    Prints this help content.
 
 Runtime:
 
 The shim always runs the target executable in a separate process
 You can use special MkShim arguments with the created shim:
  --mkshim-noop
-   RunCompiler created shim but prints <target_executable> instead of executing it.
+   RunCompiler created shim but print <target_executable> instead of executing it.
 
  --mkshim-test
    Tests if shim's <target_executable> exists.
