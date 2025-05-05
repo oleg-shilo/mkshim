@@ -73,7 +73,7 @@ namespace mkshim.tests
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --wait-onexit");
 
-            Assert.Contains("\"Use --wait-pause instead.\"", output);
+            Assert.Contains("Use --wait-pause instead.", output);
         }
 
         [Fact]
