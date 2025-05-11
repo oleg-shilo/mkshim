@@ -1,11 +1,11 @@
 //css_ng csc
 //css_inc cmd
+using System;
+using System.Collections.Generic;
 using static System.Environment;
 using System.IO;
 using System.Linq;
 using System.Xml.Linq;
-using System.Collections.Generic;
-using System;
 
 (string version,
  string lnx_version, _) = vs.parse_release_notes(args.FirstOrDefault() ?? Path.GetFullPath(@"..\release_notes.md"));
@@ -20,8 +20,8 @@ var releaseDir = Path.Combine(winget_repo, $@"manifests\o\oleg-shilo\mkshim\{ver
 Console.WriteLine($"Creating new winget manifest files ...");
 
 cmd.xcopy(
-    Path.Combine(winget_repo, @"manifests\o\oleg-shilo\mkshim\1.1.5.0\*"),
-    releaseDir);
+     Path.Combine(winget_repo, @"manifests\o\oleg-shilo\mkshim\1.1.5.0\*"),
+     releaseDir);
 
 Console.WriteLine();
 
@@ -34,8 +34,8 @@ var url = $"https://github.com/oleg-shilo/mkshim/releases/download/v{version}/mk
 var checksum = CalcChecksum(url);
 
 PatchFile(
-    Path.Combine(releaseDir, "oleg-shilo.mkshim.yaml"),
-    x => x.StartsWith("PackageVersion: "),
+     Path.Combine(releaseDir, "oleg-shilo.mkshim.yaml"),
+     x => x.StartsWith("PackageVersion: "),
     $"PackageVersion: {version}");
 
 PatchFile(
@@ -50,8 +50,8 @@ PatchFile(
 
 PatchFile(
     Path.Combine(releaseDir, "oleg-shilo.mkshim.installer.yaml"),
-    x => x.StartsWith("- InstallerUrl:"),
-    $"- InstallerUrl: {url}");
+    x => x.StartsWith("  InstallerUrl:") || x.StartsWith("- InstallerUrl:"),
+    $"  InstallerUrl: {url}");
 
 PatchFile(
     Path.Combine(releaseDir, "oleg-shilo.mkshim.installer.yaml"),
