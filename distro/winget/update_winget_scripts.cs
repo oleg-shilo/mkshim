@@ -12,8 +12,8 @@ using System.Xml.Linq;
 
 var winget_repo = Path.GetFullPath(@"..\..\..\winget-pkgs");
 
-cmd.run("git", $"branch oleg-shilo_mkshim_{version}", winget_repo);
-cmd.run("git", $"checkout oleg-shilo_mkshim_{version}", winget_repo);
+// cmd.run("git", $"branch oleg-shilo_mkshim_{version}", winget_repo);
+// cmd.run("git", $"checkout oleg-shilo_mkshim_{version}", winget_repo);
 
 var releaseDir = Path.Combine(winget_repo, $@"manifests\o\oleg-shilo\mkshim\{version}");
 
