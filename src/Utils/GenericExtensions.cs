@@ -30,6 +30,8 @@ static class GenericExtensions
         return relativePath;
     }
 
+    public static bool HasText(this string text) => !string.IsNullOrEmpty(text);
+
     public static string EnsureExtension(this string path, string extension)
     {
         if (string.Compare(Path.GetExtension(path), extension, true) != 0)
@@ -173,7 +175,7 @@ static class GenericExtensions
         }
     }
 
-    public static bool HaveArgFor(this string[] args, string name)
+    public static bool? HaveArgFor(this string[] args, string name)
     {
         var switches = typeof(RunOptions).GetFields()
             .Where(x => x.Name == name)
@@ -224,6 +226,71 @@ static class GenericExtensions
                 compileLog.AppendLine("> " + line);
         }
         return p;
+    }
+
+    public static string Run(this string exe, string args = null)
+    {
+        var startInfo = new ProcessStartInfo
+        {
+            FileName = exe,
+            Arguments = args,
+            RedirectStandardOutput = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
+        };
+
+        using (var process = Process.Start(startInfo))
+        {
+            var output = process.StandardOutput.ReadToEnd().Trim();
+            process.WaitForExit();
+            return output;
+        }
+    }
+
+    public static string ExtractTargetOfShim(this string shimFile)
+    {
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            // cannot run and collect STDOUT as the shim might be a window app
+            shimFile.Run($"--mkshim-noop-target \"{tempFile}\""); // deliberately undocummented internal hidden command
+
+            var output = File.ReadAllText(tempFile);
+            return output.Trim();
+        }
+        finally { File.Delete(tempFile); }
+    }
+
+    public static string[] ParseCliArgs(this string commandLine)
+    {
+        var args = new List<string>();
+        var currentArg = new System.Text.StringBuilder();
+        bool inQuotes = false;
+        for (int i = 0; i < commandLine.Length; i++)
+        {
+            char c = commandLine[i];
+            if (c == '\"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (c == ' ' && !inQuotes)
+            {
+                if (currentArg.Length > 0)
+                {
+                    args.Add(currentArg.ToString());
+                    currentArg.Clear();
+                }
+            }
+            else
+            {
+                currentArg.Append(c);
+            }
+        }
+        if (currentArg.Length > 0)
+        {
+            args.Add(currentArg.ToString());
+        }
+        return args.ToArray();
     }
 }
 

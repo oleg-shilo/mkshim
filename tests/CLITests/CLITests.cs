@@ -4,6 +4,87 @@ using TsudaKageyu;
 
 namespace mkshim.tests
 {
+    public class RunOptionsTests
+    {
+        [Fact]
+        public void RunOptions_Merge()
+        {
+            var options = new RunOptions
+            {
+                DefaultArguments = "param1 param2",
+                IconFile = "icon.ico",
+                RelativeTargetPath = true,
+                ShimRequiresElevation = true,
+                NoOverlay = true,
+                Console = true,
+                ConsoleHidden = true,
+                Windows = true,
+                WaitPause = true
+            };
+
+            var newOptions = new RunOptions
+            {
+                DefaultArguments = "param3",
+                IconFile = "icon1.ico",
+                RelativeTargetPath = false,
+            };
+
+            var resultOptions = options.MergeWith(newOptions);
+
+            // test the merge result
+            // Fields that were set in newOptions should be overridden
+            Assert.Equal("param3", resultOptions.DefaultArguments);
+            Assert.Equal("icon1.ico", resultOptions.IconFile);
+            Assert.False(resultOptions.RelativeTargetPath);
+
+            // Fields that were NOT set in newOptions should remain from original options
+            Assert.True(resultOptions.ShimRequiresElevation);
+            Assert.True(resultOptions.NoOverlay);
+            Assert.True(resultOptions.Console);
+            Assert.True(resultOptions.ConsoleHidden);
+            Assert.True(resultOptions.Windows);
+            Assert.True(resultOptions.WaitPause);
+        }
+
+        [Fact]
+        public void RunOptions_Remove()
+        {
+            var options = new RunOptions
+            {
+                DefaultArguments = "param1 param2",
+                IconFile = "icon.ico",
+                RelativeTargetPath = true,
+                ShimRequiresElevation = true,
+                NoOverlay = true,
+                Console = true,
+                Windows = true,
+                WaitPause = true
+            };
+
+            var newOptions = new RunOptions
+            {
+                DefaultArguments = "dummy",
+                RelativeTargetPath = true,
+            };
+
+            var resultOptions = options.Remove(newOptions);
+
+            // test the merge result
+            // Fields that were set in newOptions should be overridden
+            Assert.Null(resultOptions.DefaultArguments);
+            Assert.False(resultOptions.RelativeTargetPath == true);
+
+            // Fields that were NOT set in newOptions should remain from original options
+            Assert.Equal("icon.ico", resultOptions.IconFile);
+            Assert.True(resultOptions.ShimRequiresElevation);
+            Assert.True(resultOptions.NoOverlay);
+            Assert.True(resultOptions.Console);
+            Assert.False(resultOptions.ConsoleHidden == true);
+            Assert.True(resultOptions.Windows);
+            Assert.True(resultOptions.WaitPause);
+        }
+    }
+
     public class CLITests : CLITestBase
     {
         [Fact]
@@ -102,6 +183,42 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void Patch()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"");
+            _Assert.FileExists(shim_exe);
+            output1 = shim_exe.Run("--mkshim-noop");
+
+            var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"--params:param3\" --patch");
+            _Assert.FileExists(shim_exe);
+            output2 = shim_exe.Run("--mkshim-noop");
+
+            Assert.Contains("param1 param2", output1);
+            Assert.Contains("param3", output2);
+        }
+
+        [Fact]
+        public void PatchRemove()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --no-overlay -c");
+            _Assert.FileExists(shim_exe);
+            output1 = shim_exe.Run("--mkshim-noop");
+
+            var output2 = mkshim_exe.Run($"\"{shim_exe}\" --no-overlay --patch-remove");
+            _Assert.FileExists(shim_exe);
+            output2 = shim_exe.Run("--mkshim-noop");
+
+            Assert.Contains("--no-overlay", output1);
+            Assert.DoesNotContain("--no-overlay", output2);
+        }
+
+        [Fact]
         public void DefaultParameters()
         {
             var dir = this.PrepareDir();
@@ -161,6 +278,82 @@ namespace mkshim.tests
             _Assert.FileExists(shim_exe);
 
             Assert.True(shim_exe.IsConsoleApp());
+        }
+
+        [Fact]
+        public void RunOptions_CommandLine_RoundTrip()
+        {
+            var options = new RunOptions
+            {
+                DefaultArguments = "param1 param2",
+                IconFile = "icon.ico",
+                RelativeTargetPath = true,
+                ShimRequiresElevation = true,
+                NoOverlay = true,
+                Console = true,
+                ConsoleHidden = true,
+                Windows = true,
+                WaitPause = true
+            };
+
+            var cmdLine = options.ComposeCommandLine();
+
+            var reconstructedOptions = new RunOptions().InitFrom(cmdLine);
+
+            Assert.Equal(options.DefaultArguments, reconstructedOptions.DefaultArguments);
+            Assert.Equal(options.IconFile, reconstructedOptions.IconFile);
+            Assert.Equal(options.RelativeTargetPath, reconstructedOptions.RelativeTargetPath);
+            Assert.Equal(options.ShimRequiresElevation, reconstructedOptions.ShimRequiresElevation);
+            Assert.Equal(options.NoOverlay, reconstructedOptions.NoOverlay);
+            Assert.Equal(options.Console, reconstructedOptions.Console);
+            Assert.Equal(options.ConsoleHidden, reconstructedOptions.ConsoleHidden);
+            Assert.Equal(options.Windows, reconstructedOptions.Windows);
+            Assert.Equal(options.WaitPause, reconstructedOptions.WaitPause);
+        }
+
+        [Fact]
+        public void RunOptions_Clone()
+        {
+            var options = new RunOptions
+            {
+                DefaultArguments = "param1 param2",
+                IconFile = "icon.ico",
+                RelativeTargetPath = true,
+                ShimRequiresElevation = true,
+                NoOverlay = true,
+                Console = true,
+                ConsoleHidden = true,
+                Windows = true,
+                WaitPause = true
+            };
+            var clonedOptions = options.Clone();
+            Assert.Equal(options.DefaultArguments, clonedOptions.DefaultArguments);
+            Assert.Equal(options.IconFile, clonedOptions.IconFile);
+            Assert.Equal(options.RelativeTargetPath, clonedOptions.RelativeTargetPath);
+            Assert.Equal(options.ShimRequiresElevation, clonedOptions.ShimRequiresElevation);
+            Assert.Equal(options.NoOverlay, clonedOptions.NoOverlay);
+            Assert.Equal(options.Console, clonedOptions.Console);
+            Assert.Equal(options.ConsoleHidden, clonedOptions.ConsoleHidden);
+            Assert.Equal(options.Windows, clonedOptions.Windows);
+            Assert.Equal(options.WaitPause, clonedOptions.WaitPause);
+        }
+
+        [Fact]
+        public void Print_noop_info()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var buildArgs = $"\"{shim_exe}\" C:\\Windows\\notepad.exe -c";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+
+            _Assert.FileExists(shim_exe);
+
+            var output = shim_exe.Run("--mkshim-noop")
+                                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                 .Skip(1).FirstOrDefault()?.Trim();
+
+            Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
         }
 
         [Theory]
@@ -275,7 +468,7 @@ namespace mkshim.tests
 
             if (!testManually)
             {
-                mkshim_overlay_32.CropLeftBottomOverlayAndSaveTo(dir.Combine("overlay.png"));
+                mkshim_overlay_32.CropLeftBottomOverlayAndSaveTo(overlay_file);
 
                 bool found = overlay_file.IsInImageQuadrant(bitmap_file, SearchQuadrant.BottomLeft);
                 Assert.True(found);
@@ -368,7 +561,9 @@ namespace mkshim.tests
             _Assert.FileExists(shim_exe);
 
             var shimExecutionTime = Profiler.Measure(() =>
-                output = shim_exe.Run($"--mkshim-exit -wait-for-5000 -log-events-to \"{shim_exe_log}\"", ignoreOutput: true));
+                // do not use mkshim_exe.Run as it will wait for STDOUT reading if a child process of shim writes something.
+                Process.Start(shim_exe, $"--mkshim-exit -wait-for-5000 -log-events-to \"{shim_exe_log}\"")
+                       .WaitForExit());
 
             Thread.Sleep(6000); // give the target app time to start and exit
 

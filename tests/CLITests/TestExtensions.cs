@@ -176,8 +176,10 @@ namespace mkshim.tests
         BottomRight
     }
 
-    static class TestExtensions
+    public static class TestExtensions
     {
+        public static bool HasText(this string text) => !string.IsNullOrEmpty(text);
+
         public static string[] GetLines(this string text) => text.Replace("\r\n", "\n").Replace("\r", "\n").Split('\n');
 
         public static string Combine(this string path, string path2) => Path.Combine(path, path2);
@@ -210,14 +212,13 @@ namespace mkshim.tests
                 .SelectMany(x => x.GetCustomAttributes(typeof(CliArgAttribute), true))
                 .Cast<CliArgAttribute>()
                 .Select(x => x.Name)
-                // .Select(x => x.Name.Split('|').First())
                 .Select(x => x.Trim())
                 .ToArray();
 
             return switches;
         }
 
-        public static string Run(this string exe, string args = null, bool ignoreOutput = false)
+        public static string Run(this string exe, string args = null)
         {
             var startInfo = new ProcessStartInfo
             {
@@ -232,11 +233,9 @@ namespace mkshim.tests
 
             using (var process = Process.Start(startInfo))
             {
+                var output = process.StandardOutput.ReadToEnd().Trim();
                 process.WaitForExit();
-                if (ignoreOutput)
-                    return "";
-                else
-                    return process.StandardOutput.ReadToEnd().Trim();
+                return output;
             }
         }
 

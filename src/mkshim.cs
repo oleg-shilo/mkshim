@@ -43,7 +43,27 @@ static class MkShim
 
     static void Run(string[] args)
     {
-        RunOptions options = args.Parse().Validate();
+        RunOptions options = args.Parse().Process().Validate();
+        RunOptions rawOptions = options.Clone();
+
+        if (options.Patch == true || options.PatchRemove == true)
+        {
+            options.Patch = false; // to avoid recursion
+
+            if (!File.Exists(options.ShimName))
+            {
+                Console.WriteLine($"Cannot find the shim to patch at: {options.ShimName}");
+                return;
+            }
+
+            var buildCommand = options.ShimName.ExtractBuildCommandOfShim();
+            var originalOptions = new RunOptions().InitFrom(buildCommand);
+
+            if (options.PatchRemove == true)
+                options = originalOptions.Remove(options).Validate();
+            else
+                options = originalOptions.MergeWith(options).Validate();
+        }
 
         if (HandleNonRunableInput(options))
             return;
@@ -56,9 +76,9 @@ static class MkShim
             (bool isWinApp, bool is64App) = options.TargetExecutable.GetPeInfo();
 
             // check if the app selection was forced by the user input
-            if (options.Windows)
+            if (options.Windows == true)
                 isWinApp = true;
-            else if (options.Console || options.ConsoleHidden)
+            else if (options.Console == true || options.ConsoleHidden == true)
                 isWinApp = false;
 
             var icon =
@@ -72,16 +92,20 @@ static class MkShim
                 icon = icon.ExtractFirstIconToFolder(buildDir);
             }
 
-            if (!options.NoOverlay)
+            if (options.NoOverlay != true)
                 icon = icon?.ApplyOverlayToIcon(icon.ChangeDir(buildDir));
 
             var targetRuntimePath = options.TargetExecutable;
-            if (options.RelativeTargetPath)
+            if (options.RelativeTargetPath == true)
                 targetRuntimePath = options.TargetExecutable.ToRelativePathFrom(options.ShimName.GetDirName());
 
-            var csFile = options.TargetExecutable.GenerateShimSourceCode(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath, options.WaitPause, options.ConsoleHidden);
+            var buildCommand = (rawOptions.Patch == true || rawOptions.PatchRemove == true) ?
+                options.ComposeCommandLine() :
+                Environment.CommandLine;
 
-            var manifestFile = options.ShimRequiresElevation.GenerateShimManifestFile(buildDir);
+            var csFile = options.TargetExecutable.GenerateShimSourceCode(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath, options.WaitPause == true, options.ConsoleHidden == true, buildCommand);
+
+            var manifestFile = options.ShimRequiresElevation?.GenerateShimManifestFile(buildDir);
 
             var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePath);
 
@@ -138,6 +162,20 @@ static class MkShim
         return null;
     }
 
+    static string ExtractBuildCommandOfShim(this string shimFile)
+    {
+        // cannot run and collect STDOUT as the shim might be a window app
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            shimFile.Run($"--mkshim-noop-build-cmd \"{tempFile}\"");// deliberately undocummented internal hidden command
+
+            var output = File.ReadAllText(tempFile);
+            return output.Trim();
+        }
+        finally { File.Delete(tempFile); }
+    }
+
     static string ExtractDefaultAppIconToFolder(this string binFilePath, string outDir)
     {
         string iconFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(binFilePath) + ".ico");
@@ -169,11 +207,17 @@ static class MkShim
     }
 
     // HiddenConsole support is not ready yet
-    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool pauseBeforeExit, bool hiddenConsole)
+    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool pauseBeforeExit, bool hiddenConsole, string buildCommand)
     {
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
-        var buildCommand = Environment.CommandLine.Replace(Assembly.GetExecutingAssembly().Location, "").Replace("\"\"", "").Replace("\\", "\\\\").Replace("\"", "\\\"").Trim();
+        var buildCommandString = buildCommand
+            .Replace(Assembly.GetExecutingAssembly().Location, "")
+            .Replace("\"\"", "")
+            .Replace("\\", "\\\\")
+            .Replace("\"", "\\\"")
+            .Trim();
+
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
@@ -183,7 +227,7 @@ static class MkShim
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
                            .Replace("//{hideConsole}", "HideConsoleWindowIfNotInTerminal();")
-                           .Replace("//{buildCommand}", buildCommand)
+                           .Replace("//{buildCommand}", buildCommandString)
                            .Replace("//{setPause}", pauseBeforeExit ? "pause = true;" : "");
 
         File.WriteAllText(csFile, code);
@@ -324,17 +368,17 @@ IDI_MAIN_ICON
 
     static StringBuilder compileLog = new StringBuilder();
 
-    static RunOptions Parse(this string[] args)
+    public static RunOptions Parse(this string[] args)
     {
         args.ValidateCliArgs();
 
         var options = new RunOptions();
 
-        if (args.HaveArgFor(nameof(options.HelpRequest)))
+        if (args.HaveArgFor(nameof(options.HelpRequest)) == true)
         {
             options.HelpRequest = true;
         }
-        else if (args.HaveArgFor(nameof(options.VersionRequest)))
+        else if (args.HaveArgFor(nameof(options.VersionRequest)) == true)
         {
             options.VersionRequest = true;
         }
@@ -344,19 +388,7 @@ IDI_MAIN_ICON
         }
         else
         {
-            options.ShimName = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
-            options.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
-
-            options.IconFile = args.GetValueFor(nameof(options.IconFile));
-            options.NoOverlay = args.HaveArgFor(nameof(options.NoOverlay));
-            options.ShimRequiresElevation = args.HaveArgFor(nameof(options.ShimRequiresElevation));
-            options.RelativeTargetPath = args.HaveArgFor(nameof(options.RelativeTargetPath));
-            options.DefaultArguments = args.GetValueFor(nameof(options.DefaultArguments))?.Replace("\\", "\\\\").Replace("\"", "\\\"") ?? "";
-            options.WaitPause = args.HaveArgFor(nameof(options.WaitPause));
-            options.NoConsole = args.HaveArgFor(nameof(options.NoConsole));
-            options.Windows = args.HaveArgFor(nameof(options.Windows));
-            options.Console = args.HaveArgFor(nameof(options.Console));
-            options.ConsoleHidden = args.HaveArgFor(nameof(options.ConsoleHidden));
+            options.InitFrom(args);
         }
         return options;
     }
@@ -414,13 +446,13 @@ IDI_MAIN_ICON
 
     static bool HandleNonRunableInput(RunOptions options)
     {
-        if (options.VersionRequest)
+        if (options.VersionRequest == true)
         {
             Console.WriteLine(ThisAssemblyFileVersion);
             return true;
         }
 
-        if (options.HelpRequest)
+        if (options.HelpRequest == true)
         {
             Console.WriteLine($@"MkShim (v{ThisAssemblyFileVersion}) - Shim generator");
             Console.WriteLine("Copyright(C) 2024 - 2025 Oleg Shilo (github.com/oleg-shilo)");
@@ -482,13 +514,29 @@ IDI_MAIN_ICON
             Console.WriteLine();
             Console.WriteLine("--console|-c"); // u-testing covered
             Console.WriteLine("    Forces the shim application to be a console application regardless the target application type.");
-            Console.WriteLine("    Note, such application will not return if it is executed from the batch file or console until the target application exits..");
+            Console.WriteLine("    Note, such application will not return if it is executed from the batch file or console until the target application exits.");
             Console.WriteLine("    See https://github.com/oleg-shilo/mkshim/wiki#use-cases");
             Console.WriteLine();
             Console.WriteLine("--console-hidden|-ch"); // u-testing covered
             Console.WriteLine("    This switch is a full equivalent of `--console` switch. But during the execution it hides.");
-            Console.WriteLine("    Note, such application will not return if it is executed from the batch file or console until the target application exits..");
+            Console.WriteLine("    Note, such application will not return if it is executed from the batch file or console until the target application exits.");
             Console.WriteLine("    See https://github.com/oleg-shilo/mkshim/wiki#use-cases");
+            Console.WriteLine();
+            Console.WriteLine("--patch|-pt");
+            Console.WriteLine("    Patches the existing shim by rebuilding it with the original build command but with the individual options parameters substituted with the user specified input.");
+            Console.WriteLine("    Example:");
+            Console.WriteLine("       Original command:  `mkshim app application.exe \"-p:param1 param2\" --win`");
+            Console.WriteLine("       Patch command:     `mkshim app \"-p:param3\"` --elevate --patch");
+            Console.WriteLine("       New build command: `mkshim app application.exe \"-p:param3\"` --win --elevate");
+            Console.WriteLine("    Note, using this option may lead to unpredictable results if the shim was build with using relative paths.");
+            Console.WriteLine();
+            Console.WriteLine("--patch-remove|-pt-rm");
+            Console.WriteLine("    Patches the existing shim by rebuilding it with the original build command but with the individual options parameters removed if they are present in the user specified input.");
+            Console.WriteLine("    Example:");
+            Console.WriteLine("       Original command: `mkshim app application.exe --elevate --win`");
+            Console.WriteLine("       Patch command:    `mkshim app --elevate --patch-remove");
+            Console.WriteLine("       New shim command: `mkshim app application.exe --win");
+            Console.WriteLine("    Note, using this option may lead to unpredictable results if the shim was build with using relative paths.");
             Console.WriteLine();
             Console.WriteLine("--help|-help|-h|-?|?"); // u-testing covered
             Console.WriteLine("    Prints this help content.");

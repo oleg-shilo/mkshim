@@ -10,11 +10,13 @@ using System.Runtime.InteropServices;
 //{version}
 //{target}
 
-static class ConsoleShim
+public static class ConsoleShim
 {
     //{appFile}
     //{defaultArgs}
     //{isConsoleFile}
+
+    public static string BuildCommand = "//{buildCommandString}";
 
     static void Main(string[] args)
     {
@@ -49,7 +51,46 @@ static class ConsoleShim
             userMessage.Show("MkShim: --mkshim-noop");
             Environment.Exit(0);
         }
+        else if (args.Contains("--mkshim-noop-build-cmd"))
+        {
+            // next argument
+            var outputFile = args.SkipWhile(x => x != "--mkshim-noop-build-cmd").Skip(1).FirstOrDefault();
 
+            var output = "//{buildCommand}";
+
+            try
+            {
+                if (string.IsNullOrEmpty(outputFile))
+                    output.Show(); 
+                else
+                    File.WriteAllText(outputFile, output);
+            }
+            catch (Exception e)
+            { 
+                e.ToString().Show();
+            }
+            
+            Environment.Exit(0);
+        }
+        else if (args.Contains("--mkshim-noop-target"))
+        {
+            // next argument
+            var outputFile = args.SkipWhile(x => x != "--mkshim-noop-target").Skip(1).FirstOrDefault();
+
+            try
+            {
+                if (string.IsNullOrEmpty(outputFile))
+                    appFile.Show(); 
+                else
+                    File.WriteAllText(outputFile, appFile);
+            }
+            catch (Exception e)
+            { 
+                e.ToString().Show();
+            }
+            
+            Environment.Exit(0);
+        }
         if (!File.Exists(appFile))
         {
             Console.WriteLine("The target executable was not found at " + appFile);

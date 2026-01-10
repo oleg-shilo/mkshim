@@ -14,6 +14,9 @@
         <Compile Include="..\..\src\IconExtractor\NativeMethods.cs" Link="shared\NativeMethods.cs" />
         <Compile Include="..\..\src\Options.cs" Link="shared\Options.cs" />
         <Compile Include="..\..\src\Properties\AssemblyVersion.cs" Link="AssemblyVersion.cs" />
+        <Compile Include="..\..\src\Utils\ConsoleExtensions.cs" Link="shared\ConsoleExtensions.cs" />
+        <Compile Include="..\..\src\Utils\GenericExtensions.cs" Link="shared\GenericExtensions.cs" />
+        <Compile Include="..\..\src\Utils\ProcessExtensions.cs" Link="shared\ProcessExtensions.cs" />
     </ItemGroup>
 
     <ItemGroup>
