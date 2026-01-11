@@ -257,6 +257,7 @@ static class RunOptionsExtension
         .AppendLine("       Patch command:     `mkshim app \"-p:param3\"` --elevate --patch")
         .AppendLine("       New build command: `mkshim app application.exe \"-p:param3\"` --win --elevate")
         .AppendLine("    Note, using this option may lead to unpredictable results if the shim was build with using relative paths.")
+        .AppendLine("    Use `<your-shim>.exe --mkshim-deconstruct` in such cases.")
         .AppendLine()
         .AppendLine(nameof(options.PatchRemove).GetCliName())
         .AppendLine("    Patches the existing shim by rebuilding it with the original build command but with the individual options parameters removed if they are present in the user specified input.")
@@ -265,6 +266,7 @@ static class RunOptionsExtension
         .AppendLine("       Patch command:    `mkshim app --elevate --patch-remove")
         .AppendLine("       New shim command: `mkshim app application.exe --win")
         .AppendLine("    Note, using this option may lead to unpredictable results if the shim was build with using relative paths.")
+        .AppendLine("    Use `<your-shim>.exe --mkshim-deconstruct` in such cases.")
         .AppendLine()
         .AppendLine(nameof(options.HelpRequest).GetCliName())
         .AppendLine("    Prints this help content.")
@@ -278,6 +280,10 @@ static class RunOptionsExtension
         .AppendLine()
         .AppendLine(" --mkshim-test")
         .AppendLine("   Tests if shim's <target_executable> exists.")
+        .AppendLine()
+        .AppendLine(" --mkshim-deconstruct")
+        .AppendLine("   Prints the content of the batch file that can be used to build the shim.")
+        .AppendLine("   The directory structure is captured as it was at the time of the shim generation.")
         .ToString();
     }
 

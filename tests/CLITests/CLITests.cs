@@ -219,6 +219,27 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void ShimDeconstruct()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var shim_exe_cmd = shim_exe + ".cmd";
+
+            var cmd = $"\"{shim_exe}\" \"{target_exe}\" --no-overlay -c";
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --no-overlay -c");
+            _Assert.FileExists(shim_exe);
+
+            output = shim_exe.Run("--mkshim-deconstruct");
+            _Assert.FileExists(shim_exe_cmd);
+
+            var content = File.ReadAllText(shim_exe_cmd);
+
+            Assert.Contains($"{Environment.CurrentDirectory.First()}:", content);
+            Assert.Contains($"cd \"{Environment.CurrentDirectory}\"", content);
+            Assert.Contains(cmd, content);
+        }
+
+        [Fact]
         public void DefaultParameters()
         {
             var dir = this.PrepareDir();

@@ -72,6 +72,31 @@ public static class ConsoleShim
             
             Environment.Exit(0);
         }
+        else if (args.Contains("--mkshim-deconstruct"))
+        {
+            // next argument
+            var outputFile = args.SkipWhile(x => x != "--mkshim-deconstruct").Skip(1).FirstOrDefault();
+
+            try
+            {
+                var shimFile = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                if (string.IsNullOrEmpty(outputFile))
+                {
+                    outputFile = shimFile + ".cmd";
+                }
+
+                var userMessage = "The build script for generating the " + Path.GetFileName(shimFile) + " has been created at this location:"+ Environment.NewLine + outputFile;
+                userMessage.Show();
+
+                File.WriteAllText(outputFile, //{buildCommandScript});
+            }
+            catch (Exception e)
+            { 
+                e.ToString().Show();
+            }
+            
+            Environment.Exit(0);
+        }
         else if (args.Contains("--mkshim-noop-target"))
         {
             // next argument

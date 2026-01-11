@@ -43,6 +43,14 @@ static class MkShim
 
     static void Run(string[] args)
     {
+        if (args.Any(x => x.StartsWith("--mkshim-")))
+        {
+            Console.WriteLine(
+                $"Error: unexpected parameters detected\n" +
+                $"Any parameter that starts with `--mkshim-` is designed to me passed to the shim itself but not mkshim.exe");
+            return;
+        }
+
         RunOptions options = args.Parse().Process().Validate();
         RunOptions rawOptions = options.Clone();
 
@@ -197,11 +205,15 @@ static class MkShim
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
         var buildCommandString = buildCommand
-            .Replace(Assembly.GetExecutingAssembly().Location, "")
-            .Replace("\"\"", "")
-            .Replace("\\", "\\\\")
-            .Replace("\"", "\\\"")
+            .Replace(Assembly.GetExecutingAssembly().Location, "").EscapeCSharpString()
             .Trim();
+
+        // c:\ncd "c:\path\to\current\dir"\n"path\to\mkshim.exe np.exe path\to\notepad.exe
+        var buildCommandScript =
+            ($"{Environment.CurrentDirectory.First()}:{NewLine}" +
+            $"cd \"{Environment.CurrentDirectory}\"{NewLine}" +
+            buildCommand)
+            .ToCSharpStringLiteral();
 
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
@@ -213,6 +225,7 @@ static class MkShim
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
                            .Replace("//{hideConsole}", "HideConsoleWindowIfNotInTerminal();")
                            .Replace("//{buildCommand}", buildCommandString)
+                           .Replace("//{buildCommandScript}", buildCommandScript)
                            .Replace("//{setPause}", pauseBeforeExit ? "pause = true;" : "");
 
         File.WriteAllText(csFile, code);
@@ -287,8 +300,6 @@ static class MkShim
             return location;
         }
     }
-
-    static string EscapeCSharpPath(this string path) => path.Replace("\\", "\\\\");
 
     static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string manifestFile, string exeRuntimePath)
     {

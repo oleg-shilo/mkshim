@@ -32,6 +32,45 @@ static class GenericExtensions
 
     public static bool HasText(this string text) => !string.IsNullOrEmpty(text);
 
+    public static string EscapeCSharpPath(this string path) => path.Replace("\\", "\\\\");
+
+    public static string EscapeCSharpString(this string path) => path.Replace("\"\"", "").Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+    public static string ToCSharpStringLiteral(this string value)
+    {
+        if (value == null)
+            return "null";
+
+        var sb = new StringBuilder(value.Length + 2);
+        sb.Append('"');
+
+        foreach (char c in value)
+        {
+            switch (c)
+            {
+                case '\\': sb.Append(@"\\"); break;
+                case '"': sb.Append("\\\""); break;
+                case '\0': sb.Append(@"\0"); break;
+                case '\a': sb.Append(@"\a"); break;
+                case '\b': sb.Append(@"\b"); break;
+                case '\f': sb.Append(@"\f"); break;
+                case '\n': sb.Append(@"\n"); break;
+                case '\r': sb.Append(@"\r"); break;
+                case '\t': sb.Append(@"\t"); break;
+                case '\v': sb.Append(@"\v"); break;
+                default:
+                    if (char.IsControl(c))
+                        sb.Append($"\\u{(int)c:X4}");
+                    else
+                        sb.Append(c);
+                    break;
+            }
+        }
+
+        sb.Append('"');
+        return sb.ToString();
+    }
+
     public static string EnsureExtension(this string path, string extension)
     {
         if (string.Compare(Path.GetExtension(path), extension, true) != 0)
