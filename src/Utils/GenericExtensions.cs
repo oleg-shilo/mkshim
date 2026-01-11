@@ -247,6 +247,20 @@ static class GenericExtensions
         }
     }
 
+    public static string ExtractBuildCommandOfShim(this string shimFile)
+    {
+        // cannot run and collect STDOUT as the shim might be a window app
+        var tempFile = Path.GetTempFileName();
+        try
+        {
+            shimFile.Run($"--mkshim-noop-build-cmd \"{tempFile}\"");// deliberately undocummented internal hidden command
+
+            var output = File.ReadAllText(tempFile);
+            return output.Trim();
+        }
+        finally { File.Delete(tempFile); }
+    }
+
     public static string ExtractTargetOfShim(this string shimFile)
     {
         var tempFile = Path.GetTempFileName();
