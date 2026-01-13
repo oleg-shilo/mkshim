@@ -1,10 +1,5 @@
-# Release v1.4.0.0
+# Release v1.5.0.0
 
-- Implemented new switches (see https://github.com/oleg-shilo/mkshim/wiki#use-cases)
-    `--console|-c`
-    `--console-hidden|-ch`
-    `--win|-w`
-    `--wait-pause 
-    Obsoleted `--no-console|-nc`. Use `--win` instead.
-    Obsoleted `--wait-onexit` Use `--wait-pause` instead.
-- Added handling (reporting) of obsolete CLI arguments
+- #5:Add ability to rewrite/modify command-line arguments
+- Added `--mkshim-deconstruct` (triggered by #5)
+    
