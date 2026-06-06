@@ -1,5 +1,5 @@
-# Release v1.5.0.0
+# Release v1.5.1.0
 
-- #5:Add ability to rewrite/modify command-line arguments
-- Added `--mkshim-deconstruct` (triggered by #5)
+- #6: Creating a shim with a path that includes an environment variable
+- Added `--keep-envars` CLI option    
     
