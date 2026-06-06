@@ -12,6 +12,7 @@ class RunOptions
 {
     public string ShimName;
     public string TargetExecutable;
+    public string TargetExecutableRaw;
 
     [CliArg("--help|-help|-h|-?|?")]
     public bool? HelpRequest;
@@ -33,6 +34,9 @@ class RunOptions
 
     [CliArg("--relative|-r")]
     public bool? RelativeTargetPath;
+
+    [CliArg("--keep-envars")]
+    public bool? KeepEnvironmentVariables;
 
     [CliArg("--elevate")]
     public bool? ShimRequiresElevation;
@@ -149,6 +153,7 @@ class RunOptions
         this.NoOverlay = args.HaveArgFor(nameof(this.NoOverlay));
         this.ShimRequiresElevation = args.HaveArgFor(nameof(this.ShimRequiresElevation));
         this.RelativeTargetPath = args.HaveArgFor(nameof(this.RelativeTargetPath));
+        this.KeepEnvironmentVariables = args.HaveArgFor(nameof(this.KeepEnvironmentVariables));
         this.DefaultArguments = args.GetValueFor(nameof(this.DefaultArguments))?.Replace("\\", "\\\\").Replace("\"", "\\\"") ?? "";
         this.WaitPause = args.HaveArgFor(nameof(this.WaitPause));
         this.NoConsole = args.HaveArgFor(nameof(this.NoConsole));
@@ -159,7 +164,10 @@ class RunOptions
         this.PatchRemove = args.HaveArgFor(nameof(this.PatchRemove));
 
         if (this.Patch != true && this.PatchRemove != true)
+        {
             this.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
+            this.TargetExecutableRaw = args[1].EnsureExtension(".exe");
+        }
         return this;
     }
 }
@@ -216,6 +224,10 @@ static class RunOptionsExtension
         .AppendLine(nameof(options.RelativeTargetPath).GetCliName())
         .AppendLine("    The created shim is to point to the target executable by the relative path with respect to the shim location.")
         .AppendLine("    Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.")
+        .AppendLine()
+        .AppendLine(nameof(options.KeepEnvironmentVariables).GetCliName())
+        .AppendLine("    Keep environment variables option.")
+        .AppendLine("    If specified, the shim will preserve the environment variables when launching the target executable.")
         .AppendLine()
         .AppendLine(nameof(options.NoConsole).GetCliName())
         .AppendLine("    No console option.")

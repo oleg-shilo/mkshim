@@ -139,6 +139,9 @@ static class GenericExtensions
         }
     }
 
+    public static string GetFileName(this string file)
+        => Path.GetFileName(file);
+
     public static string GetDirName(this string file)
         => Path.GetDirectoryName(file);
 

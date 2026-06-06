@@ -261,6 +261,38 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void TargetWithEnVar()
+        {
+            string dir = this.PrepareDir("TargetWithEnVar");
+            string shim_exe = dir.Combine("shim.exe");
+
+            string targetDir = Path.GetTempPath().TrimEnd('\\');
+            Environment.SetEnvironmentVariable("TARGET_DIR", targetDir);
+            File.Copy(base.target_exe, Path.Combine(targetDir, base.target_exe.GetFileName()), overwrite: true);
+
+            string targetPath = "%TARGET_DIR%\\" + base.target_exe.GetFileName();
+
+            string output = base.mkshim_exe.Run($"\"{shim_exe}\" \"{targetPath}\" --keep-envars");
+            shim_exe.FileExists("TargetWithEnVar", "D:\\dev\\mkshim.git\\tests\\CLITests\\CLITests.cs", 199);
+
+            output = shim_exe.Run("--mkshim-noop");
+            Assert.Contains("Target: " + targetDir + "\\targetapp.exe", output);
+
+            File.Delete(Environment.ExpandEnvironmentVariables(targetPath));
+
+            output = shim_exe.Run("--mkshim-test");
+            Assert.Contains("Error: target file is not found.", output);
+
+            Environment.SetEnvironmentVariable("TARGET_DIR", base.target_exe.GetDirName());
+
+            output = shim_exe.Run("--mkshim-noop");
+            Assert.Contains("Target: " + base.target_exe, output);
+
+            output = shim_exe.Run("--mkshim-test");
+            Assert.Contains("Success: target file exists.", output);
+        }
+
+        [Fact]
         public void Shim_Relative_TargetPath()
         {
             // setup

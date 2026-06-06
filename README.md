@@ -56,6 +56,11 @@ Options:
     The created shim is to point to the target executable by the relative path with respect to the shim location.
     Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.
 
+--keep-envars
+    Keep environment variables option.
+    If specified, the shim preserves the environment variable references in the target executable path (e.g. `%MY_APP_DIR%\app.exe`) instead of resolving them to an absolute path at creation time.
+    The environment variables will be expanded dynamically each time the shim is executed, so if the variable value changes the shim will automatically point to the updated location.
+
 --no-console | -nc
     No console option.
     MkShim decided what time of shim to build (console vs window) based on the target executable type. Basically it is matching the target exe type.

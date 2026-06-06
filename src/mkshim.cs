@@ -111,7 +111,14 @@ static class MkShim
                 options.ComposeCommandLine() :
                 Environment.CommandLine;
 
-            var csFile = options.TargetExecutable.GenerateShimSourceCode(buildDir, isWinApp, options.DefaultArguments, targetRuntimePath, options.WaitPause == true, options.ConsoleHidden == true, buildCommand);
+            var csFile = options.TargetExecutable.GenerateShimSourceCode(
+                buildDir,
+                isWinApp,
+                options.DefaultArguments,
+                (options.KeepEnvironmentVariables == true) ? options.TargetExecutableRaw : targetRuntimePath,
+                options.WaitPause == true,
+                options.ConsoleHidden == true,
+                buildCommand);
 
             var manifestFile = options.ShimRequiresElevation?.GenerateShimManifestFile(buildDir);
 
@@ -219,7 +226,7 @@ static class MkShim
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
                            .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exeRuntimePath}\")]")
-                           .Replace("//{appFile}", $"static string appFile = @\"{exeRuntimePath}\";")
+                           .Replace("//{appFile}", $"static string appFile = System.Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath}\");")
                            .Replace("//{isConsoleFile}", $"static bool isConsole = {(!isWinApp ? "true" : "false")};")
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
