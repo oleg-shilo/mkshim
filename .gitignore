@@ -399,3 +399,4 @@ FodyWeavers.xsd
 /tests/TestTargetApp/TargetApp.exe
 /distro/Choco/mkshim.zip
 /distro/mkshim.exe
+/tests/TestTargetApp/targetapp.exe.1.png
