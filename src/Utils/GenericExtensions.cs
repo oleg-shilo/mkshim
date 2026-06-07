@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -158,13 +159,33 @@ static class GenericExtensions
 
     public static void ValidateCliArgs(this string[] args)
     {
+        // Collect every known switch token defined via [CliArg] across all RunOptions fields.
+        var knownSwitches = new HashSet<string>(
+            typeof(RunOptions).GetFields()
+                .SelectMany(x => x.GetCustomAttributes(typeof(CliArgAttribute), true))
+                .Cast<CliArgAttribute>()
+                .SelectMany(x => x.Name.Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries))
+                .Select(x => x.Trim()),
+            StringComparer.OrdinalIgnoreCase);
+
+        // Warn about any unrecognised switches (args that start with '-' but are not known).
+        foreach (var arg in args)
+        {
+            // Strip a colon-value suffix, e.g. "--params:foo" → "--params"
+            var token = arg.IndexOf(':') >= 0 ? arg.Substring(0, arg.IndexOf(':')) : arg;
+
+            if (token.StartsWith("-") && !knownSwitches.Contains(token))
+                Console.WriteLine($"Warning: unknown switch '{token}' will be ignored.");
+        }
+
+        // Existing obsolete-switch validation.
         var obsoleteSwitches = typeof(RunOptions).GetFields()
             .Select(x => new
             {
                 Obsolete = x.GetCustomAttributes(typeof(ObsoleteAttribute), true).Cast<ObsoleteAttribute>().FirstOrDefault()?.Message,
                 Args = x.GetCustomAttributes(typeof(CliArgAttribute), true).Cast<CliArgAttribute>()
                     .Select(y => y.Name)
-                    .FirstOrDefault()? // there can be only one DescriptionAttribute for a member
+                    .FirstOrDefault()?
                     .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(y => y.Trim())
                     .ToArray()
@@ -315,6 +336,59 @@ static class GenericExtensions
             return output.Trim();
         }
         finally { File.Delete(tempFile); }
+    }
+
+    /// <summary>
+    /// Reads <c>mkshim.cli-map</c> from the directory of the running executable and replaces
+    /// any alias tokens found in <paramref name="args"/> with their canonical counterparts.
+    /// Each line in the map file must follow the format: <c>&lt;standard arg&gt;|&lt;alias&gt;</c>.
+    /// Lines that are blank or start with <c>#</c> are ignored.
+    /// </summary>
+    public static string[] ApplyCliMap(this string[] args)
+    {
+        var mapFile = Path.Combine(
+            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
+            "mkshim.cli-map");
+
+        if (!File.Exists(mapFile))
+            return args;
+
+        // Build alias → standard lookup from the map file.
+        var aliasMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var raw in File.ReadAllLines(mapFile))
+        {
+            var line = raw.Trim();
+            if (string.IsNullOrEmpty(line) || line.StartsWith("#"))
+                continue;
+
+            var parts = line.Split(new[] { '|' }, 2);
+            if (parts.Length != 2)
+                continue;
+
+            var standard = parts[0].Trim();
+            var alias = parts[1].Trim();
+
+            if (standard.HasText() && alias.HasText())
+                aliasMap[alias] = standard;
+        }
+
+        if (aliasMap.Count == 0)
+            return args;
+
+        // Replace alias tokens in the args array.
+        // Handles both plain switches (e.g. "-r") and value-bearing ones (e.g. "-p:value").
+        return args.Select(arg =>
+        {
+            // Split off a potential value suffix, e.g. "--params:foo" → "--params" + ":foo"
+            var colonIdx = arg.IndexOf(':');
+            var token = colonIdx >= 0 ? arg.Substring(0, colonIdx) : arg;
+            var suffix = colonIdx >= 0 ? arg.Substring(colonIdx) : string.Empty;
+
+            return aliasMap.TryGetValue(token, out var canonical)
+                ? canonical + suffix
+                : arg;
+        }).ToArray();
     }
 
     public static string[] ParseCliArgs(this string commandLine)

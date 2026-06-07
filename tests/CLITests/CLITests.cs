@@ -295,6 +295,54 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void Shim_Cli_ArgsMapping()
+        {
+            // setup
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var relativeTargetPath = Path.GetRelativePath(Path.GetDirectoryName(shim_exe), target_exe);
+
+            var mkshim_exe_shadow = dir.Combine("shadow").CreateDir()
+                                       .Combine(mkshim_exe.GetFileName());
+
+            var mkshim_exe_shadow_cli_map = Path.ChangeExtension(mkshim_exe_shadow, ".cli-map");
+
+            File.Copy(mkshim_exe, mkshim_exe_shadow, true);
+
+            string extractTargetPath(string data) => data.GetLines().First(x => x.Contains("Target: ")).Replace("Target:", "").Trim();
+
+            // test
+
+            // --------------------------------------------------------------------------------------
+            // standard mapping
+            var output = mkshim_exe_shadow.Run($"\"{shim_exe}\" \"{target_exe}\" --relative");
+
+            _Assert.AssertFileExists(shim_exe);
+            output = shim_exe.Run($"--mkshim-noop");
+            Assert.Contains(relativeTargetPath, extractTargetPath(output));
+
+            // --------------------------------------------------------------------------------------
+            // custom mapping with mapping file
+            File.WriteAllText(mkshim_exe_shadow_cli_map, "--relative|-r2");
+            output = mkshim_exe_shadow.Run($"\"{shim_exe}\" \"{target_exe}\" -r2");
+
+            _Assert.AssertFileExists(shim_exe);
+            output = shim_exe.Run($"--mkshim-noop");
+            Assert.Contains(relativeTargetPath, extractTargetPath(output));
+
+            // --------------------------------------------------------------------------------------
+            // custom mapping but missing mapping file
+            File.Delete(mkshim_exe_shadow_cli_map);
+
+            output = mkshim_exe_shadow.Run($"\"{shim_exe}\" \"{target_exe}\" -r2");
+
+            _Assert.AssertFileExists(shim_exe);
+            Assert.Contains("Warning: unknown switch '-r2' will be ignored.", output);
+            output = shim_exe.Run($"--mkshim-noop");
+            Assert.Contains(target_exe, output); // not relative but full path as the custom mapping is not applied due to missing mapping file
+        }
+
+        [Fact]
         public void Shim_Relative_TargetPath()
         {
             // setup

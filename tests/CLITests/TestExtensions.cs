@@ -184,6 +184,12 @@ namespace mkshim.tests
 
         public static string Combine(this string path, string path2) => Path.Combine(path, path2);
 
+        public static string CreateDir(this string path)
+        {
+            Directory.CreateDirectory(path);
+            return path;
+        }
+
         public static string PrepareDir(this object test, [CallerMemberNameAttribute] string caller = null)
         {
             var dir = Path.Combine(AppContext.BaseDirectory, "test-output", caller);

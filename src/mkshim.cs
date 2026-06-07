@@ -43,6 +43,8 @@ static class MkShim
 
     static void Run(string[] args)
     {
+        args = args.ApplyCliMap();
+
         if (args.Any(x => x.StartsWith("--mkshim-")))
         {
             Console.WriteLine(
