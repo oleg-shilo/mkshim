@@ -35,7 +35,7 @@ class RunOptions
     [CliArg("--relative|-r")]
     public bool? RelativeTargetPath;
 
-    [CliArg("--keep-envars")]
+    [CliArg("--keep-envars|--keep_vars|-kv")]
     public bool? KeepEnvironmentVariables;
 
     [CliArg("--elevate")]

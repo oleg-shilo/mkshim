@@ -346,9 +346,7 @@ static class GenericExtensions
     /// </summary>
     public static string[] ApplyCliMap(this string[] args)
     {
-        var mapFile = Path.Combine(
-            Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location),
-            "mkshim.cli-map");
+        var mapFile = Path.ChangeExtension(Assembly.GetExecutingAssembly().Location, ".cli-map");
 
         if (!File.Exists(mapFile))
             return args;
