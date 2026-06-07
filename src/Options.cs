@@ -228,6 +228,8 @@ static class RunOptionsExtension
         .AppendLine(nameof(options.KeepEnvironmentVariables).GetCliName())
         .AppendLine("    Keep environment variables option.")
         .AppendLine("    If specified, the shim will preserve the environment variables when launching the target executable.")
+        .AppendLine("    Note, since the .NET runtime expects only %VAR% format for environment variables even on Linux, any other format may not be preserved correctly.")
+        .AppendLine("    Thus for the best compatibility, use the %VAR% format even on Linux, when you use " + nameof(options.KeepEnvironmentVariables).GetCliName() + "optiion.")
         .AppendLine()
         .AppendLine(nameof(options.NoConsole).GetCliName())
         .AppendLine("    No console option.")

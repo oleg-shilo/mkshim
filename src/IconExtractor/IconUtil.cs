@@ -70,12 +70,15 @@ namespace TsudaKageyu
             // Get an .ico file in memory, then split it into separate icons.
 
             var src = GetIconData(icon);
+            Exception lastError = null;
 
             var splitIcons = new List<Icon>();
-            {
-                int count = BitConverter.ToUInt16(src, 4);
 
-                for (int i = 0; i < count; i++)
+            int count = BitConverter.ToUInt16(src, 4);
+
+            for (int i = 0; i < count; i++)
+            {
+                try
                 {
                     int length = BitConverter.ToInt32(src, 6 + 16 * i + 8);    // ICONDIRENTRY.dwBytesInRes
                     int offset = BitConverter.ToInt32(src, 6 + 16 * i + 12);   // ICONDIRENTRY.dwImageOffset
@@ -90,7 +93,7 @@ namespace TsudaKageyu
                         // Copy ICONDIRENTRY and set dwImageOffset to 22.
 
                         dst.Write(src, 6 + 16 * i, 12); // ICONDIRENTRY except dwImageOffset
-                        dst.Write(22);                   // ICONDIRENTRY.dwImageOffset
+                        dst.Write(22);                  // ICONDIRENTRY.dwImageOffset
 
                         // Copy a picture.
 
@@ -102,6 +105,12 @@ namespace TsudaKageyu
                         splitIcons.Add(new Icon(dst.BaseStream));
                     }
                 }
+                catch (Exception ex) { lastError = ex; }
+            }
+
+            if (splitIcons.Count == 0 && lastError != null)
+            {
+                throw new ArgumentException("The icon is corrupt. Couldn't read the header.", "icon", lastError);
             }
 
             return splitIcons.ToArray();
@@ -136,7 +145,7 @@ namespace TsudaKageyu
         /// <returns>Bit depth of the icon.</returns>
         /// <remarks>
         /// This method takes into account the PNG header.
-        /// If the icon has multiple variations, this method returns the bit 
+        /// If the icon has multiple variations, this method returns the bit
         /// depth of the first variation.
         /// </remarks>
         public static int GetBitCount(Icon icon)
@@ -159,14 +168,19 @@ namespace TsudaKageyu
                 {
                     case 0:
                         return data[46];
+
                     case 2:
                         return data[46] * 3;
+
                     case 3:
                         return data[46];
+
                     case 4:
                         return data[46] * 2;
+
                     case 6:
                         return data[46] * 4;
+
                     default:
                         // NOP
                         break;

@@ -33,14 +33,23 @@ static class IconExtensions
 
         using (originalIcon)
         {
-            List<Bitmap> bitmaps = ExtractBitmapsFromIcon(originalIcon);
-            var overlayImages = LoadOverlayImages();
-
-            List<Bitmap> modifiedBitmaps = bitmaps.Select(bmp => ApplyOverlay(bmp, overlayImages)).ToList();
-
-            using (var newIcon = CreateIconFromBitmaps(modifiedBitmaps))
+            try
             {
-                SaveIconToFile(newIcon, result);
+                List<Bitmap> bitmaps = ExtractBitmapsFromIcon(originalIcon);
+                var overlayImages = LoadOverlayImages();
+
+                List<Bitmap> modifiedBitmaps = bitmaps.Select(bmp => ApplyOverlay(bmp, overlayImages)).ToList();
+
+                using (var newIcon = CreateIconFromBitmaps(modifiedBitmaps))
+                {
+                    SaveIconToFile(newIcon, result);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"WARNING: Failed to apply overlay to the icon '{iconPath}'. {ex.Message}");
+                // If we fail to apply the overlay, we can still use the original icon
+                File.Copy(iconPath, result, overwrite: true);
             }
         }
 
@@ -103,6 +112,9 @@ static class IconExtensions
         List<Bitmap> bitmaps = new List<Bitmap>();
 
         var input = IconUtil.Split(icon).GetLongestSequenceOfSizes();
+
+        if (input.Length == 0)
+            return bitmaps;
 
         // if we failed to identify the sequence we can have a mixture of sizes with duplications
         var items = input
