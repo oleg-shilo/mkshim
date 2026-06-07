@@ -70,9 +70,9 @@ namespace mkshim.tests
             }
         }
 
-        public static void FileExists(this string path, [CallerMemberName] string caller = null, [CallerFilePath] string file = null, [CallerLineNumber] int line = -1)
+        public static void AssertFileExists(this string path, [CallerMemberName] string caller = null, [CallerFilePath] string file = null, [CallerLineNumber] int line = -1)
         {
-            Assert.True(File.Exists(path), $"Assert.FileExists failure: {caller}\n{file} (line {line})");
+            Assert.True(File.Exists(path), $"Assert.AssertFileExists failure: {caller}\n{file} (line {line})");
         }
     }
 

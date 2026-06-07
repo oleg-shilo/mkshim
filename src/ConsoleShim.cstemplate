@@ -45,7 +45,7 @@ public static class ConsoleShim
             var userMessage = "Executing shim in 'no operation' mode."+ Environment.NewLine + 
                               "Build shim command: mkshim " + "//{buildCommand}" + Environment.NewLine + 
                               "---" + Environment.NewLine + 
-                              "Target: " + appFile + Environment.NewLine + 
+                              "Target: " + (appFileRaw == appFile ? appFileRaw : (appFileRaw + " (" + appFile + ")")) + Environment.NewLine + 
                               "Default params: " + defaultArgs;
 
             userMessage.Show("MkShim: --mkshim-noop");

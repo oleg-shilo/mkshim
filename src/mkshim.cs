@@ -222,11 +222,15 @@ static class MkShim
             buildCommand)
             .ToCSharpStringLiteral();
 
+        var appFileConstants =
+            $"static string appFile = System.Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath}\");{NewLine}" +
+            $"static string appFileRaw = @\"{exeRuntimePath}\";";
+
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
                            .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exeRuntimePath}\")]")
-                           .Replace("//{appFile}", $"static string appFile = System.Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath}\");")
+                           .Replace("//{appFile}", appFileConstants)
                            .Replace("//{isConsoleFile}", $"static bool isConsole = {(!isWinApp ? "true" : "false")};")
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")

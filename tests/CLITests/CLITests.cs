@@ -166,7 +166,7 @@ namespace mkshim.tests
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
 
             Assert.Contains("The shim has been created", output);
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
         }
 
         [Fact]
@@ -189,11 +189,11 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
             output1 = shim_exe.Run("--mkshim-noop");
 
             var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"--params:param3\" --patch");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
             output2 = shim_exe.Run("--mkshim-noop");
 
             Assert.Contains("param1 param2", output1);
@@ -207,11 +207,11 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --no-overlay -c");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
             output1 = shim_exe.Run("--mkshim-noop");
 
             var output2 = mkshim_exe.Run($"\"{shim_exe}\" --no-overlay --patch-remove");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
             output2 = shim_exe.Run("--mkshim-noop");
 
             Assert.Contains("--no-overlay", output1);
@@ -227,10 +227,10 @@ namespace mkshim.tests
 
             var cmd = $"\"{shim_exe}\" \"{target_exe}\" --no-overlay -c";
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --no-overlay -c");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             output = shim_exe.Run("--mkshim-deconstruct");
-            _Assert.FileExists(shim_exe_cmd);
+            _Assert.AssertFileExists(shim_exe_cmd);
 
             var content = File.ReadAllText(shim_exe_cmd);
 
@@ -246,10 +246,10 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:param1 param2\"");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"--params:param1 param2\"");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
             Assert.Equal(output1, output2);
 
             var allParameters = shim_exe.Run($"param3").GetLines();
@@ -273,10 +273,12 @@ namespace mkshim.tests
             string targetPath = "%TARGET_DIR%\\" + base.target_exe.GetFileName();
 
             string output = base.mkshim_exe.Run($"\"{shim_exe}\" \"{targetPath}\" --keep-envars");
-            shim_exe.FileExists("TargetWithEnVar", "D:\\dev\\mkshim.git\\tests\\CLITests\\CLITests.cs", 199);
+            shim_exe.AssertFileExists();
 
             output = shim_exe.Run("--mkshim-noop");
-            Assert.Contains("Target: " + targetDir + "\\targetapp.exe", output);
+            Assert.Contains("Target: " + targetPath, output);
+            Assert.Contains(targetDir, output);
+            Assert.Contains("--keep-envars", output);
 
             File.Delete(Environment.ExpandEnvironmentVariables(targetPath));
 
@@ -286,7 +288,7 @@ namespace mkshim.tests
             Environment.SetEnvironmentVariable("TARGET_DIR", base.target_exe.GetDirName());
 
             output = shim_exe.Run("--mkshim-noop");
-            Assert.Contains("Target: " + base.target_exe, output);
+            Assert.Contains($"({base.target_exe})", output);
 
             output = shim_exe.Run("--mkshim-test");
             Assert.Contains("Success: target file exists.", output);
@@ -305,8 +307,8 @@ namespace mkshim.tests
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" -r");
             var output1 = mkshim_exe.Run($"\"{shim1_exe}\" \"{target_exe}\" --relative");
 
-            _Assert.FileExists(shim_exe);
-            _Assert.FileExists(shim1_exe);
+            _Assert.AssertFileExists(shim_exe);
+            _Assert.AssertFileExists(shim1_exe);
 
             // first 3 liknes can be different (e.g. 'Build shim command:')
             output = string.Join("\n", shim_exe.Run($"--mkshim-noop").GetLines().Skip(3));
@@ -328,7 +330,7 @@ namespace mkshim.tests
 
             mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe {@switch}");
 
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             Assert.True(shim_exe.IsConsoleApp());
         }
@@ -400,7 +402,7 @@ namespace mkshim.tests
 
             var outpout = mkshim_exe.Run(buildArgs);
 
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             var output = shim_exe.Run("--mkshim-noop")
                                  .Split('\n', StringSplitOptions.RemoveEmptyEntries)
@@ -418,7 +420,7 @@ namespace mkshim.tests
 
             mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" {@switch}");
 
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             Assert.False(shim_exe.IsConsoleApp());
         }
@@ -433,8 +435,8 @@ namespace mkshim.tests
             mkshim_exe.Run($"\"{shim_console_exe}\" \"{target_exe}\"");
             mkshim_exe.Run($"\"{shim_win_exe}\" C:\\Windows\\notepad.exe");
 
-            _Assert.FileExists(shim_console_exe);
-            _Assert.FileExists(shim_win_exe);
+            _Assert.AssertFileExists(shim_console_exe);
+            _Assert.AssertFileExists(shim_win_exe);
 
             Assert.True(shim_console_exe.IsConsoleApp());
             Assert.False(shim_win_exe.IsConsoleApp());
@@ -447,7 +449,7 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             var timestamp = Environment.TickCount;
             shim_exe.Run("-wait-for-5000");            // app will wait for 5 seconds.
@@ -466,8 +468,8 @@ namespace mkshim.tests
             mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
             mkshim_exe.Run($"\"{shim_wait_exe}\" \"{target_exe}\" --wait-pause");
 
-            _Assert.FileExists(shim_exe);
-            _Assert.FileExists(shim_wait_exe);
+            _Assert.AssertFileExists(shim_exe);
+            _Assert.AssertFileExists(shim_wait_exe);
 
             // no wait app
             var executionTime = Profiler.Measure(() => shim_exe.Run());
@@ -488,7 +490,7 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             output = "sigcheck".Run($"\"{shim_exe}\"");
 
@@ -510,8 +512,8 @@ namespace mkshim.tests
             mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe");
             mkshim_exe.Run($"\"{shim_nooverlay_exe}\" C:\\Windows\\notepad.exe --no-overlay");
 
-            _Assert.FileExists(shim_exe);
-            _Assert.FileExists(shim_nooverlay_exe);
+            _Assert.AssertFileExists(shim_exe);
+            _Assert.AssertFileExists(shim_nooverlay_exe);
 
             // it will extract first bitmap of the first icon that is a 32x32 bitmap
             var bitmap_file = shim_exe.GetFirstIconBitmap();
@@ -544,7 +546,7 @@ namespace mkshim.tests
 
             mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"  \"--icon:{mkshim_ico}\" --no-overlay");
 
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             var custom_bitmap = mkshim_ico.GetIconFirstBitmap(dir.Combine("expected.png"));
             var bitmap_from_shim = shim_exe.GetFirstIconBitmap();
@@ -560,7 +562,7 @@ namespace mkshim.tests
 
             mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"  --no-overlay");
 
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             var bitmap_from_target = target_exe.GetFirstIconBitmap();
             var bitmap_from_shim = shim_exe.GetFirstIconBitmap();
@@ -577,7 +579,7 @@ namespace mkshim.tests
 
             var output = mkshim_exe.Run(command);
 
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             output = shim_exe.Run($"--mkshim-noop");
 
@@ -593,7 +595,7 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             output = shim_exe.Run($"--mkshim-test");
             Assert.Contains($"Success: target file exists.", output);
@@ -611,7 +613,7 @@ namespace mkshim.tests
                 File.Delete(shim_exe_log);
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             var shimExecutionTime = Profiler.Measure(() =>
                 // do not use mkshim_exe.Run as it will wait for STDOUT reading if a child process of shim writes something.
@@ -620,7 +622,7 @@ namespace mkshim.tests
 
             Thread.Sleep(6000); // give the target app time to start and exit
 
-            _Assert.FileExists(shim_exe_log);
+            _Assert.AssertFileExists(shim_exe_log);
             var log = File.ReadAllLines(shim_exe_log)
                 .Where(x => x.Contains(": target started") || x.Contains(": target exited"))
                 .Select(x => x.Replace(": target started", "").Replace(": target exited", ""));
@@ -641,7 +643,7 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" C:\\Windows\\notepad.exe --console-hidden");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
             Assert.True(shim_exe.IsConsoleApp());
 
             // "explorer".Run(dir);
@@ -655,7 +657,7 @@ namespace mkshim.tests
             var shim_exe = dir.Combine("shim.exe");
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --elevate");
-            _Assert.FileExists(shim_exe);
+            _Assert.AssertFileExists(shim_exe);
 
             // "explorer".Run(dir);
         }
