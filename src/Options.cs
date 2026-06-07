@@ -54,14 +54,6 @@ class RunOptions
     [CliArg("--win|-w")]
     public bool? Windows;
 
-    [CliArg("--no-console|-nc")]
-    [Obsolete("Use --win instead.")]
-    public bool? NoConsole;
-
-    [CliArg("--wait-onexit")]
-    [Obsolete("Use --wait-pause instead.")]
-    public bool? WaitBeforeExit;
-
     [CliArg("--wait-pause")]
     public bool? WaitPause;
 
@@ -83,10 +75,10 @@ class RunOptions
         if (ShimRequiresElevation == true) result.Append(" --elevate");
         if (IconFile.HasText()) result.Append($"  \"--icon:{IconFile}\"");
         if (Console == true) result.Append(" --console");
-        if (WaitPause == true || WaitBeforeExit == true) result.Append(" --wait-pause");
+        if (WaitPause == true) result.Append(" --wait-pause");
         if (DefaultArguments.HasText()) result.Append($"  \"--params:{DefaultArguments}\"");
         if (ConsoleHidden == true) result.Append(" --console-hidden");
-        if (Windows == true || NoConsole == true) result.Append(" --win");
+        if (Windows == true) result.Append(" --win");
 
         return result.ToString().Trim();
     }
@@ -156,7 +148,6 @@ class RunOptions
         this.KeepEnvironmentVariables = args.HaveArgFor(nameof(this.KeepEnvironmentVariables));
         this.DefaultArguments = args.GetValueFor(nameof(this.DefaultArguments))?.Replace("\\", "\\\\").Replace("\"", "\\\"") ?? "";
         this.WaitPause = args.HaveArgFor(nameof(this.WaitPause));
-        this.NoConsole = args.HaveArgFor(nameof(this.NoConsole));
         this.Windows = args.HaveArgFor(nameof(this.Windows));
         this.Console = args.HaveArgFor(nameof(this.Console));
         this.ConsoleHidden = args.HaveArgFor(nameof(this.ConsoleHidden));
@@ -230,11 +221,6 @@ static class RunOptionsExtension
         .AppendLine("    If specified, the shim will preserve the environment variables when launching the target executable.")
         .AppendLine("    Note, since the .NET runtime expects only %VAR% format for environment variables even on Linux, any other format may not be preserved correctly.")
         .AppendLine("    Thus for the best compatibility, use the %VAR% format even on Linux, when you use " + nameof(options.KeepEnvironmentVariables).GetCliName() + "optiion.")
-        .AppendLine()
-        .AppendLine(nameof(options.NoConsole).GetCliName())
-        .AppendLine("    No console option.")
-        .AppendLine("    MkShim decided what time of shim to build (console vs window) based on the target executable type. Basically it is matching the target exe type.")
-        .AppendLine("    However if your target exe is a console and for whatever reason you want to build a widow shim then you can use this option.")
         .AppendLine()
         .AppendLine(nameof(options.NoOverlay).GetCliName())
         .AppendLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.")
