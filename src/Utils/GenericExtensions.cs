@@ -16,11 +16,73 @@ using System.Xml.Linq;
 using mkshim;
 using TsudaKageyu;
 
-static class AppExtensions
+public static class AppExtensions
 {
     public static bool HasDecoratedEnvVars(this string path) => path.Contains("{env:");
 
-    public static string UndecorateEnvVars(this string path) => path.Replace("{env:", "%").Replace("}", "%");
+    /// <summary>
+    /// Converts <c>{env:VAR_NAME}</c> tokens in <paramref name="path"/> to the
+    /// <c>%VAR_NAME%</c> format expected by <see cref="Environment.ExpandEnvironmentVariables"/>.
+    /// A literal <c>}</c> character that is not the closing brace of an <c>{env:…}</c> token
+    /// must be escaped by doubling it (<c>}}</c>); it will be output as a single <c>}</c>.
+    /// </summary>
+    public static string UndecorateEnvVars(this string path)
+    {
+        const string prefix = "{env:";
+        var result = new StringBuilder(path.Length);
+        int i = 0;
+
+        while (i < path.Length)
+        {
+            // Check for the {env: prefix at the current position.
+            if (i + prefix.Length <= path.Length &&
+                path.IndexOf(prefix, i, prefix.Length, StringComparison.Ordinal) == i)
+            {
+                // Find the closing } for this token (not escaped, i.e. not }}).
+                int start = i + prefix.Length;   // first char of variable name
+                int close = -1;
+
+                for (int j = start; j < path.Length; j++)
+                {
+                    if (path[j] == '}')
+                    {
+                        // }} inside a token name is not a valid env-var name character anyway,
+                        // but treat a single } as the closing brace.
+                        close = j;
+                        break;
+                    }
+                }
+
+                if (close >= 0)
+                {
+                    // Emit %VAR_NAME%
+                    result.Append('%');
+                    result.Append(path, start, close - start);
+                    result.Append('%');
+                    i = close + 1;
+                }
+                else
+                {
+                    // No closing brace found – emit the prefix literally and advance.
+                    result.Append(prefix);
+                    i += prefix.Length;
+                }
+            }
+            else if (path[i] == '}' && i + 1 < path.Length && path[i + 1] == '}')
+            {
+                // Escaped }}: output a single literal }.
+                result.Append('}');
+                i += 2;
+            }
+            else
+            {
+                result.Append(path[i]);
+                i++;
+            }
+        }
+
+        return result.ToString();
+    }
 }
 
 static class GenericExtensions

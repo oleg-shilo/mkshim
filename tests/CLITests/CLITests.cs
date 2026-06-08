@@ -4,6 +4,32 @@ using TsudaKageyu;
 
 namespace mkshim.tests
 {
+    public class EnvVarSupportTests
+    {
+        [Fact]
+        public void Escaping()
+        {
+            Assert.Equal(@"%TEMP%\foo", @"{env:TEMP}\foo".UndecorateEnvVars()); // normal token
+            Assert.Equal("%A%}%B%", "{env:A}}{env:B}".UndecorateEnvVars()); // }} → literal } between two tokens
+            Assert.Equal(@"C:\foo}", @"C:\foo}}".UndecorateEnvVars()); // standalone }} escape outside a token
+            Assert.Equal("{env:X", "{env:X".UndecorateEnvVars()); // malformed token passed through unchanged
+            Assert.Equal(@"%TEMP%\}\rest", @"{env:TEMP}\}}\rest".UndecorateEnvVars()); // closing }} after the token
+        }
+
+        [Fact]
+        public void Undecorating()
+        {
+            Assert.Equal(@"%VAR_NAME%\Target.exe", @"{env:VAR_NAME}\Target.exe".UndecorateEnvVars());
+        }
+
+        [Fact]
+        public void DetectingEnvVars()
+        {
+            Assert.True(@"{env:VAR_NAME}\\Target.exe".HasDecoratedEnvVars());
+            Assert.False(@"c\test\Target.exe".HasDecoratedEnvVars());
+        }
+    }
+
     public class RunOptionsTests
     {
         [Fact]
