@@ -35,6 +35,15 @@ shim_name
 target_executable
     Path to the target executable to be pointed to by the created shim.
     The `.exe` extension will be assumed if the file path was specified without an extension.
+    The path may embed environment variables using the `{env:VAR_NAME}` syntax, e.g.:
+       mkshim myapp "{env:ProgramFiles}\MyApp\app.exe"
+    The variable is stored as-is inside the shim and expanded every time the shim is invoked,
+    so the shim automatically adapts if the variable's value changes between invocations.
+
+    Note: use `{env:VAR_NAME}` syntax (not `%VAR_NAME%`) to ensure deferred expansion at runtime.
+    If the path itself contains a literal `}` character, escape it by doubling it (`}}`), e.g.:
+       mkshim myapp "{env:BASE_DIR}\folder}}name\app.exe"
+    The `}}` will be stored and resolved as a single `}` at runtime.
 
 Options:
 
@@ -55,11 +64,6 @@ Options:
 --relative | -r
     The created shim is to point to the target executable by the relative path with respect to the shim location.
     Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.
-
---keep-envars
-    Keep environment variables option.
-    If specified, the shim preserves the environment variable references in the target executable path (e.g. `%MY_APP_DIR%\app.exe`) instead of resolving them to an absolute path at creation time.
-    The environment variables will be expanded dynamically each time the shim is executed, so if the variable value changes the shim will automatically point to the updated location.
 
 --no-console | -nc
     No console option.
@@ -171,6 +175,35 @@ d:\tools\rc.exe:
         File version:   10.0.22621.3233 (WinBuild.160101.0800)
         MachineType:    64-bit
 ```
+
+## Experimental Features
+
+### CLI Argument Aliases (`mkshim.cli-map`)
+
+MkShim supports a simple alias mapping file that lets you define custom short-hand names for any standard CLI switch. This is useful when you use mkshim frequently and want shorter or more memorable argument names.
+
+Place a file named `mkshim.cli-map` in the same directory as `mkshim.exe`. Each non-empty line (lines starting with `#` are treated as comments) must follow the format:
+
+```
+<standard_arg>|<alias>
+```
+
+**Example `mkshim.cli-map`:**
+```
+# Map short aliases to standard mkshim switches
+--relative|-rel
+--elevate|-e
+```
+
+With this file in place, the following two commands are equivalent:
+
+```cmd
+mkshim myapp C:\Tools\app.exe --relative --elevate
+mkshim myapp C:\Tools\app.exe -rel -e
+```
+
+> [!NOTE]
+> The alias file is purely a local convenience — it is not embedded in the shim and has no effect on how the shim runs.
 
 ## Contributions/Credits
 
