@@ -35,9 +35,6 @@ class RunOptions
     [CliArg("--relative|-r")]
     public bool? RelativeTargetPath;
 
-    [CliArg("--keep-envars|--keep_vars|-kv")]
-    public bool? KeepEnvironmentVariables;
-
     [CliArg("--elevate")]
     public bool? ShimRequiresElevation;
 
@@ -58,6 +55,8 @@ class RunOptions
     public bool? WaitPause;
 
     public bool IsRunable => HelpRequest != true && VersionRequest != true;
+
+    public bool KeepEnvironmentVariables => TargetExecutableRaw.HasDecoratedEnvVars();
 
     public string ComposeCommandLine()
     {
@@ -145,7 +144,6 @@ class RunOptions
         this.NoOverlay = args.HaveArgFor(nameof(this.NoOverlay));
         this.ShimRequiresElevation = args.HaveArgFor(nameof(this.ShimRequiresElevation));
         this.RelativeTargetPath = args.HaveArgFor(nameof(this.RelativeTargetPath));
-        this.KeepEnvironmentVariables = args.HaveArgFor(nameof(this.KeepEnvironmentVariables));
         this.DefaultArguments = args.GetValueFor(nameof(this.DefaultArguments))?.Replace("\\", "\\\\").Replace("\"", "\\\"") ?? "";
         this.WaitPause = args.HaveArgFor(nameof(this.WaitPause));
         this.Windows = args.HaveArgFor(nameof(this.Windows));
@@ -156,7 +154,9 @@ class RunOptions
 
         if (this.Patch != true && this.PatchRemove != true)
         {
-            this.TargetExecutable = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[1])).EnsureExtension(".exe");
+            var path = args[1].UndecorateEnvVars()
+                              .ExpandEnvVars();
+            this.TargetExecutable = path.GetFullPath().EnsureExtension(".exe");
             this.TargetExecutableRaw = args[1].EnsureExtension(".exe");
         }
         return this;
@@ -195,6 +195,11 @@ static class RunOptionsExtension
         .AppendLine("target_executable")
         .AppendLine("    Path to the target executable to be pointed to by the created shim.")
         .AppendLine("    The `.exe` extension will be assumed if the file path was specified without an extension.")
+        .AppendLine("    The path may embed environment variables using the `{env:VAR_NAME}` syntax, e.g.:")
+        .AppendLine("       mkshim myapp \"{env:ProgramFiles}\\MyApp\\app.exe\"")
+        .AppendLine("    The variable is stored as-is inside the shim and expanded every time the shim is invoked,")
+        .AppendLine("    so the shim automatically adapts if the variable's value changes between invocations.")
+        .AppendLine("    Note: use `{env:VAR_NAME}` syntax (not `%VAR_NAME%`) to ensure deferred expansion at runtime.")
         .AppendLine()
         .AppendLine("Options:")
         .AppendLine()
@@ -215,12 +220,6 @@ static class RunOptionsExtension
         .AppendLine(nameof(options.RelativeTargetPath).GetCliName())
         .AppendLine("    The created shim is to point to the target executable by the relative path with respect to the shim location.")
         .AppendLine("    Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.")
-        .AppendLine()
-        .AppendLine(nameof(options.KeepEnvironmentVariables).GetCliName())
-        .AppendLine("    Keep environment variables option.")
-        .AppendLine("    If specified, the shim will preserve the environment variables when launching the target executable.")
-        .AppendLine("    Note, since the .NET runtime expects only %VAR% format for environment variables even on Linux, any other format may not be preserved correctly.")
-        .AppendLine("    Thus for the best compatibility, use the %VAR% format even on Linux, when you use " + nameof(options.KeepEnvironmentVariables).GetCliName() + "optiion.")
         .AppendLine()
         .AppendLine(nameof(options.NoOverlay).GetCliName())
         .AppendLine("    Disable embedding 'shim' overlay to the application icon of the shim executable.")

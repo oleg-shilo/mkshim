@@ -43,6 +43,7 @@ static class MkShim
 
     static void Run(string[] args)
     {
+        // Debugger.Launch();
         args = args.ApplyCliMap();
 
         if (args.Any(x => x.StartsWith("--mkshim-")))
@@ -225,8 +226,9 @@ static class MkShim
             .ToCSharpStringLiteral();
 
         var appFileConstants =
-            $"static string appFile = System.Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath}\");{NewLine}" +
-            $"static string appFileRaw = @\"{exeRuntimePath}\";";
+            $"static string appFileBuild = @\"{exeRuntimePath}\"; // as in the build cmd{NewLine}" +
+            $"static string appFileRaw = @\"{exeRuntimePath.UndecorateEnvVars()}\";{NewLine}" +
+            $"static string appFile = System.Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath.UndecorateEnvVars()}\");{NewLine}";
 
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 

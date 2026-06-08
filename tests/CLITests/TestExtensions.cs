@@ -49,7 +49,7 @@ namespace mkshim.tests
                 }
             }
 
-            Assert.True(false, $"Assert.FilesAreNotSame failure; File `{path1}` and `{path2}` have the same content: {caller}\n{file} (line {line})");
+            Assert.Fail($"Assert.FilesAreNotSame failure; File `{path1}` and `{path2}` have the same content: {caller}\n{file} (line {line})");
         }
 
         public static void FilesAreSame(this string path1, string path2, [CallerMemberName] string caller = null, [CallerFilePath] string file = null, [CallerLineNumber] int line = -1)
@@ -65,7 +65,7 @@ namespace mkshim.tests
             {
                 if (data1[i] != data2[i])
                 {
-                    Assert.True(false, $"Assert.FilesAreSame failure; File `{path1}` and `{path2}` have different content: {caller}\n{file} (line {line})");
+                    Assert.Fail($"Assert.FilesAreSame failure; File `{path1}` and `{path2}` have different content: {caller}\n{file} (line {line})");
                 }
             }
         }

@@ -16,6 +16,13 @@ using System.Xml.Linq;
 using mkshim;
 using TsudaKageyu;
 
+static class AppExtensions
+{
+    public static bool HasDecoratedEnvVars(this string path) => path.Contains("{env:");
+
+    public static string UndecorateEnvVars(this string path) => path.Replace("{env:", "%").Replace("}", "%");
+}
+
 static class GenericExtensions
 {
     public static string ToRelativePathFrom(this string toFile, string fromDir)
@@ -30,6 +37,10 @@ static class GenericExtensions
                                  .Replace('/', Path.DirectorySeparatorChar);
         return relativePath;
     }
+
+    public static string GetFullPath(this string path) => Path.GetFullPath(path);
+
+    public static string ExpandEnvVars(this string text) => Environment.ExpandEnvironmentVariables(text);
 
     public static bool HasText(this string text) => !string.IsNullOrEmpty(text);
 

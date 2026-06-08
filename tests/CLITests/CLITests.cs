@@ -154,7 +154,7 @@ namespace mkshim.tests
 
             var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --wait-onexit");
 
-            Assert.Contains("Use --wait-pause instead.", output);
+            Assert.Contains("Warning: unknown switch '--wait-onexit' will be ignored.", output);
         }
 
         [Fact]
@@ -270,17 +270,16 @@ namespace mkshim.tests
             Environment.SetEnvironmentVariable("TARGET_DIR", targetDir);
             File.Copy(base.target_exe, Path.Combine(targetDir, base.target_exe.GetFileName()), overwrite: true);
 
-            string targetPath = "%TARGET_DIR%\\" + base.target_exe.GetFileName();
+            string targetPath = "{env:TARGET_DIR}\\" + base.target_exe.GetFileName();
 
-            string output = base.mkshim_exe.Run($"\"{shim_exe}\" \"{targetPath}\" --keep-envars");
+            string output = base.mkshim_exe.Run($"\"{shim_exe}\" \"{targetPath}\"");
             shim_exe.AssertFileExists();
 
             output = shim_exe.Run("--mkshim-noop");
-            Assert.Contains("Target: " + targetPath, output);
+            Assert.Contains("Target: " + targetPath.UndecorateEnvVars(), output);
             Assert.Contains(targetDir, output);
-            Assert.Contains("--keep-envars", output);
 
-            File.Delete(Environment.ExpandEnvironmentVariables(targetPath));
+            File.Delete(targetPath.UndecorateEnvVars().ExpandEnvVars());
 
             output = shim_exe.Run("--mkshim-test");
             Assert.Contains("Error: target file is not found.", output);
