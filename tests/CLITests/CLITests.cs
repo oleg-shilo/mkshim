@@ -9,11 +9,23 @@ namespace mkshim.tests
         [Fact]
         public void Escaping()
         {
-            Assert.Equal(@"%TEMP%\foo", @"{env:TEMP}\foo".UndecorateEnvVars()); // normal token
-            Assert.Equal("%A%}%B%", "{env:A}}{env:B}".UndecorateEnvVars()); // }} → literal } between two tokens
-            Assert.Equal(@"C:\foo}", @"C:\foo}}".UndecorateEnvVars()); // standalone }} escape outside a token
-            Assert.Equal("{env:X", "{env:X".UndecorateEnvVars()); // malformed token passed through unchanged
-            Assert.Equal(@"%TEMP%\}\rest", @"{env:TEMP}\}}\rest".UndecorateEnvVars()); // closing }} after the token
+            (string input, string output)[] test =
+                [
+                    (@"{env:abc{123}\foo",   @"%abc{123%\foo"),  // token with literal { inside
+                    (@"{env:MY}}VAR}\foo",   @"%MY}VAR%\foo"),   // token with literal } inside
+                    (@"{env:MY}}}}VAR}\foo", @"%MY}}VAR%\foo"),  // token with literal }} inside
+                    (@"{env:TEMP}\foo",      @"%TEMP%\foo"),     // normal token
+                    (@"{env:A}}{env:B}",     @"%A%}%B%"),        // }} → literal } between two tokens
+                    (@"C:\foo}",             @"C:\foo}"),        // standalone } escape outside a token
+                    (@"{env:X",              @"{env:X"),         // malformed token passed through unchanged
+                    (@"{env:TEMP}\}\rest",   @"%TEMP%\}\rest"),  // closing }} after the token
+                ];
+
+            foreach (var (input, expected) in test)
+            {
+                var actual = input.UndecorateEnvVars();
+                Assert.Equal(expected, actual);
+            }
         }
 
         [Fact]

@@ -50,7 +50,7 @@ static class MkShim
         {
             Console.WriteLine(
                 $"Error: unexpected parameters detected\n" +
-                $"Any parameter that starts with `--mkshim-` is designed to me passed to the shim itself but not mkshim.exe");
+                $"Any parameter that starts with `--mkshim-...` is designed to me passed to the shim itself but not mkshim.exe");
             return;
         }
 

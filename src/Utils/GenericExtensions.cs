@@ -12,6 +12,7 @@ using System.Reflection.PortableExecutable;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Xml.Linq;
 using mkshim;
 using TsudaKageyu;
@@ -21,67 +22,35 @@ public static class AppExtensions
     public static bool HasDecoratedEnvVars(this string path) => path.Contains("{env:");
 
     /// <summary>
-    /// Converts <c>{env:VAR_NAME}</c> tokens in <paramref name="path"/> to the
-    /// <c>%VAR_NAME%</c> format expected by <see cref="Environment.ExpandEnvironmentVariables"/>.
-    /// A literal <c>}</c> character that is not the closing brace of an <c>{env:…}</c> token
-    /// must be escaped by doubling it (<c>}}</c>); it will be output as a single <c>}</c>.
+    /// Replaces any occurrences of "{env:VAR_NAME}" in the input string with "%VAR_NAME%",
+    /// which is the format expected by <see cref="Environment.ExpandEnvironmentVariables"/>.
+    /// <para>
+    /// Since the end decoration tag '}' is allowed in both environment variables and paths,
+    /// it can be escaped by doubling it, e.g. "{env:MY_VAR_WITH_}}_IN_NAME}" → "%MY_VAR_WITH_}_IN_NAME%".
+    /// You can also simply remap troublesome variables to aliases without '}', e.g. "set secret_local=%secret{local}%".
+    /// </para>
     /// </summary>
+    /// <param name="path"></param>
+    /// <returns></returns>
     public static string UndecorateEnvVars(this string path)
     {
-        const string prefix = "{env:";
-        var result = new StringBuilder(path.Length);
-        int i = 0;
+        var escapingEndTokenInVarName = true;
 
-        while (i < path.Length)
+        string pattern = escapingEndTokenInVarName ?
+            @"\{env:((?:[^:\\\/#\s}]|}})+)\}" :  // escaping
+            @"\{env:([^:\\\/#\s}]+)\}";          // no escaping;
+
+        string result = Regex.Replace(path, pattern, match =>
         {
-            // Check for the {env: prefix at the current position.
-            if (i + prefix.Length <= path.Length &&
-                path.IndexOf(prefix, i, prefix.Length, StringComparison.Ordinal) == i)
-            {
-                // Find the closing } for this token (not escaped, i.e. not }}).
-                int start = i + prefix.Length;   // first char of variable name
-                int close = -1;
+            string varName = match.Groups[1].Value;
 
-                for (int j = start; j < path.Length; j++)
-                {
-                    if (path[j] == '}')
-                    {
-                        // }} inside a token name is not a valid env-var name character anyway,
-                        // but treat a single } as the closing brace.
-                        close = j;
-                        break;
-                    }
-                }
+            if (escapingEndTokenInVarName)
+                varName = varName.Replace("}}", "}"); // unescape the escaped } in the var name
 
-                if (close >= 0)
-                {
-                    // Emit %VAR_NAME%
-                    result.Append('%');
-                    result.Append(path, start, close - start);
-                    result.Append('%');
-                    i = close + 1;
-                }
-                else
-                {
-                    // No closing brace found – emit the prefix literally and advance.
-                    result.Append(prefix);
-                    i += prefix.Length;
-                }
-            }
-            else if (path[i] == '}' && i + 1 < path.Length && path[i + 1] == '}')
-            {
-                // Escaped }}: output a single literal }.
-                result.Append('}');
-                i += 2;
-            }
-            else
-            {
-                result.Append(path[i]);
-                i++;
-            }
-        }
-
-        return result.ToString();
+            string envValue = $"%{varName}%";
+            return envValue ?? match.Value;
+        });
+        return result;
     }
 }
 
