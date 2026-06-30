@@ -136,13 +136,44 @@ static class MkShim
 
             var appRes = (res != null ? $"/win32res:\"{res}\"" : "");
             var cpu = (is64App ? "/platform:x64" : "");
+            var shimAlreadyExists = File.Exists(options.ShimName);
+
+            if (shimAlreadyExists)
+            {
+                if (options.SkipReplace == true)
+                {
+                    Console.WriteLine($"The shim already exists and will not be replaced because of the `--skip-replace` option.");
+                    return;
+                }
+                else if (options.ConfirmReplace == true)
+                {
+                    Console.WriteLine($"The shim already exists. Enter 'Y' to confirm replacement or 'N' to skip:");
+
+                    // Use Console.Read() instead of Console.ReadKey() for better testability
+                    int keyCode = Console.Read();
+                    char keyChar = char.ToUpperInvariant((char)keyCode);
+
+                    if (keyChar != 'Y')
+                    {
+                        Console.WriteLine("Skipping replacement.");
+                        return;
+                    }
+                }
+            }
 
             var build = csc.RunCompiler($"-out:\"{options.ShimName}\" {appRes} {cpu} /target:{(isWinApp ? "winexe" : "exe")} \"{csFile}\"", compileLog);
             build.WaitForExit();
 
             if (build.ExitCode == 0)
             {
-                Console.WriteLine($"The shim has been created");
+                if (shimAlreadyExists)
+                {
+                    Console.WriteLine($"The existing shim has been updated");
+                }
+                else
+                {
+                    Console.WriteLine($"The shim has been created");
+                }
                 Console.WriteLine($"  {options.ShimName}");
                 Console.WriteLine($"     `-> {options.TargetExecutable}");
             }

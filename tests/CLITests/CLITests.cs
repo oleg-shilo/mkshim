@@ -171,7 +171,7 @@ namespace mkshim.tests
 
             Assert.True(
                 missingInfo.Length == 0,
-                $"Some CLI switches are not implemented: " + string.Join(", ", missingInfo));
+                $"Some CLI switches are not implemented. Update GenerateCliHelp() method for: " + string.Join(", ", missingInfo));
         }
 
         [Fact]
@@ -288,7 +288,9 @@ namespace mkshim.tests
 
             var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"--params:param1 param2\"");
             _Assert.AssertFileExists(shim_exe);
-            Assert.Equal(output1, output2);
+            Assert.Equal(
+                output1.Replace("The shim has been created", "The existing shim has been updated"),
+                output2);
 
             var allParameters = shim_exe.Run($"param3").GetLines();
 
@@ -745,6 +747,167 @@ namespace mkshim.tests
             _Assert.AssertFileExists(shim_exe);
 
             // "explorer".Run(dir);
+        }
+
+        [Fact]
+        public void SkipReplace_WhenShimExists()
+        {
+            // Arrange
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            // Create the shim file first time
+            var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
+            _Assert.AssertFileExists(shim_exe);
+            Assert.Contains("The shim has been created", output1);
+
+            // Get original file info
+            var originalWriteTime = File.GetLastWriteTime(shim_exe);
+            var originalSize = new FileInfo(shim_exe).Length;
+
+            // Wait to ensure timestamps would differ if file was modified
+            Thread.Sleep(100);
+
+            // Act - try to create it again with --skip-replace
+            var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --skip-replace");
+
+            // Assert
+            Assert.Contains("The shim already exists and will not be replaced because of the `--skip-replace` option.", output2);
+            _Assert.AssertFileExists(shim_exe);
+
+            // Verify file was not modified
+            Assert.Equal(originalWriteTime, File.GetLastWriteTime(shim_exe));
+            Assert.Equal(originalSize, new FileInfo(shim_exe).Length);
+        }
+
+        [Fact]
+        public void SkipReplace_WhenShimDoesNotExist()
+        {
+            // Arrange
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            // Act - create shim with --skip-replace when it doesn't exist yet
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --skip-replace");
+
+            // Assert - should create the shim normally
+            Assert.Contains("The shim has been created", output);
+            _Assert.AssertFileExists(shim_exe);
+        }
+
+        [Fact]
+        public void ConfirmReplace_AcceptReplacement()
+        {
+            // Arrange
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            // Create the shim file first time
+            var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
+            _Assert.AssertFileExists(shim_exe);
+            Assert.Contains("The shim has been created", output1);
+
+            var originalWriteTime = File.GetLastWriteTime(shim_exe);
+            Thread.Sleep(100);
+
+            // Act - recreate with --confirm-replace and simulate pressing 'Y'
+            var output2 = mkshim_exe.RunWithDelayedInput($"\"{shim_exe}\" \"{target_exe}\" --confirm-replace", "Y", 100);
+
+            // Assert - should update the shim
+            Assert.Contains("The existing shim has been updated", output2);
+            _Assert.AssertFileExists(shim_exe);
+        }
+
+        [Fact]
+        public void ConfirmReplace_DeclineReplacement()
+        {
+            // Arrange
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            // Create the shim file first time
+            mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
+            _Assert.AssertFileExists(shim_exe);
+
+            var originalWriteTime = File.GetLastWriteTime(shim_exe);
+            Thread.Sleep(100);
+
+            // Act - recreate with --confirm-replace and simulate pressing 'N'
+            var output = mkshim_exe.RunWithDelayedInput($"\"{shim_exe}\" \"{target_exe}\" --confirm-replace", "N", 2000);
+
+            // Assert - should skip replacement
+            Assert.Contains("Skipping replacement.", output);
+            _Assert.AssertFileExists(shim_exe);
+
+            // Verify file was not modified
+            Assert.Equal(originalWriteTime, File.GetLastWriteTime(shim_exe));
+        }
+
+        [Fact]
+        public void ConfirmReplace_WhenShimDoesNotExist()
+        {
+            // Arrange
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            // Act - create shim with --confirm-replace when it doesn't exist yet
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" --confirm-replace");
+
+            // Assert - should create the shim normally without prompting
+            Assert.Contains("The shim has been created", output);
+            _Assert.AssertFileExists(shim_exe);
+        }
+
+        [Fact]
+        public void ReplaceShim_WithoutOptions_ByDefault()
+        {
+            // Arrange
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            // Create the shim file first time
+            var output1 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\"");
+            _Assert.AssertFileExists(shim_exe);
+            Assert.Contains("The shim has been created", output1);
+
+            var originalWriteTime = File.GetLastWriteTime(shim_exe);
+            Thread.Sleep(100);
+
+            // Act - recreate without any replace options (should replace by default)
+            var output2 = mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:new params\"");
+
+            // Assert - should update the shim automatically
+            Assert.Contains("The existing shim has been updated", output2);
+            _Assert.AssertFileExists(shim_exe);
+
+            // Verify file was modified
+            Assert.NotEqual(originalWriteTime, File.GetLastWriteTime(shim_exe));
+        }
+
+        [Fact]
+        public void SkipReplace_WithPatch()
+        {
+            // Arrange
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            // Create the shim file first time
+            mkshim_exe.Run($"\"{shim_exe}\" \"{target_exe}\" \"-p:param1\"");
+            _Assert.AssertFileExists(shim_exe);
+
+            var originalWriteTime = File.GetLastWriteTime(shim_exe);
+            Thread.Sleep(100);
+
+            // Act - try to patch with --skip-replace
+            var output = mkshim_exe.Run($"\"{shim_exe}\" \"-p:param2\" --patch --skip-replace");
+
+            // Assert - should not patch due to skip-replace
+            Assert.Contains("The shim already exists and will not be replaced because of the `--skip-replace` option.", output);
+
+            // Verify original params are still there
+            var noopOutput = shim_exe.Run("--mkshim-noop");
+            Assert.Contains("param1", noopOutput);
+            Assert.DoesNotContain("param2", noopOutput);
         }
     }
 }

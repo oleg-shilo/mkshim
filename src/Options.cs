@@ -48,6 +48,12 @@ class RunOptions
     [CliArg("--console-hidden|-ch")]
     public bool? ConsoleHidden;
 
+    [CliArg("--skip-replace|-skip")]
+    public bool? SkipReplace;
+
+    [CliArg("--confirm-replace|-confirm")]
+    public bool? ConfirmReplace;
+
     [CliArg("--win|-w")]
     public bool? Windows;
 
@@ -77,6 +83,8 @@ class RunOptions
         if (WaitPause == true) result.Append(" --wait-pause");
         if (DefaultArguments.HasText()) result.Append($"  \"--params:{DefaultArguments}\"");
         if (ConsoleHidden == true) result.Append(" --console-hidden");
+        if (SkipReplace == true) result.Append(" --skip-replace");
+        if (ConfirmReplace == true) result.Append(" --confirm-replace");
         if (Windows == true) result.Append(" --win");
 
         return result.ToString().Trim();
@@ -149,6 +157,8 @@ class RunOptions
         this.Windows = args.HaveArgFor(nameof(this.Windows));
         this.Console = args.HaveArgFor(nameof(this.Console));
         this.ConsoleHidden = args.HaveArgFor(nameof(this.ConsoleHidden));
+        this.SkipReplace = args.HaveArgFor(nameof(this.SkipReplace));
+        this.ConfirmReplace = args.HaveArgFor(nameof(this.ConfirmReplace));
         this.Patch = args.HaveArgFor(nameof(this.Patch));
         this.PatchRemove = args.HaveArgFor(nameof(this.PatchRemove));
 
@@ -181,7 +191,7 @@ static class RunOptionsExtension
         string thisAssemblyFileVersion = FileVersionInfo.GetVersionInfo(Assembly.GetExecutingAssembly().Location).FileVersion;
 
         return new StringBuilder()
-        .AppendLine($"{thisAssemblyFileVersion}) - Shim generator")
+        .AppendLine($"{thisAssemblyFileVersion} - Shim generator")
         .AppendLine("Copyright(C) 2024 - 2026 Oleg Shilo (github.com/oleg-shilo)")
         .AppendLine($@"Generates shim for a given executable file.")
         .AppendLine()
@@ -247,6 +257,12 @@ static class RunOptionsExtension
         .AppendLine("    Forces the shim application to be a console application regardless the target application type.")
         .AppendLine("    Note, such application will not return if it is executed from the batch file or console until the target application exits.")
         .AppendLine("    See https://github.com/oleg-shilo/mkshim/wiki#use-cases")
+        .AppendLine()
+        .AppendLine(nameof(options.SkipReplace).GetCliName())
+        .AppendLine("    Skip replacing the existing shim if it already exists.")
+        .AppendLine()
+        .AppendLine(nameof(options.ConfirmReplace).GetCliName())
+        .AppendLine("    Will prompt for confirmation before replacing the existing shim.")
         .AppendLine()
         .AppendLine(nameof(options.ConsoleHidden).GetCliName())
         .AppendLine("    This switch is a full equivalent of `--console` switch. But during the execution it hides.")
