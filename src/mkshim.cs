@@ -261,16 +261,20 @@ static class MkShim
             buildCommand)
             .ToCSharpStringLiteral();
 
-        var appFileConstants =
-            $"static string appFileBuild = @\"{exeRuntimePath}\"; // as in the build cmd{NewLine}" +
-            $"static string appFileRaw = @\"{exeRuntimePath.UndecorateEnvVars()}\";{NewLine}" +
-            $"static string appFile = System.Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath.UndecorateEnvVars()}\");{NewLine}";
+        // var appFileConstants =
+        //     $"static string appFileBuild = @\"{exeRuntimePath}\"; // as in the build cmd{NewLine}" +
+        //     $"static string appFileRaw = @\"{exeRuntimePath.UndecorateEnvVars()}\"; // may contain envars{NewLine}" +
+        //     $"static string appFile = Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath.UndecorateEnvVars()}\");{NewLine}";
+
+        var appFileConstants = new StringBuilder();
+        foreach (var path in exeRuntimePaths)
+            appFileConstants.AppendLine($"new TargetInfo(@\"{path.UndecorateEnvVars()}\", @\"{path}\"),");
 
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
                            .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exeRuntimePath}\")]")
-                           .Replace("//{appFile}", appFileConstants)
+                           .Replace("//{appFile}", appFileConstants.ToString())
                            .Replace("//{isConsoleFile}", $"static bool isConsole = {(!isWinApp ? "true" : "false")};")
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
