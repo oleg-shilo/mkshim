@@ -134,7 +134,7 @@ class RunOptions
         var defaultValues = new RunOptions();
         foreach (var field in typeof(RunOptions).GetFields())
         {
-            if (field.Name == nameof(this.TargetExecutable) || field.Name == nameof(this.ShimName))
+            if (field.Name == nameof(this.AllTargetExecutables) || field.Name == nameof(this.ShimName))
                 continue;
 
             var extraValue = field.GetValue(extraOptions);
@@ -170,27 +170,23 @@ class RunOptions
         this.ConfirmReplace = args.HaveArgFor(nameof(this.ConfirmReplace));
         this.Patch = args.HaveArgFor(nameof(this.Patch));
         this.PatchRemove = args.HaveArgFor(nameof(this.PatchRemove));
-        this.AllTargetExecutables = args.GetValuesFor(nameof(this.AllTargetExecutables)).ToList();
-        this.TargetExecutablesRaw = this.AllTargetExecutables.Select(x => x.EnsureExtension(".exe")).ToList();
 
         if (this.Patch != true && this.PatchRemove != true)
         {
-            if (!this.AllTargetExecutables.Any())
+            var targetArgs = args.GetValuesFor(nameof(this.AllTargetExecutables)).ToList();
+            if (!targetArgs.Any())
+                targetArgs = new List<string> { args[1] };
+
+            for (int i = 0; i < targetArgs.Count; i++)
             {
-                this.AllTargetExecutables.Add(args[1]);
-                this.TargetExecutablesRaw = this.AllTargetExecutables.ToList();
+                var path = targetArgs[i].EnsureExtension(".exe");
+
+                this.TargetExecutablesRaw.Add(path);
+                this.AllTargetExecutables.Add(path.UndecorateEnvVars()
+                                                  .ExpandEnvVars()
+                                                  .GetFullPath());
             }
 
-            for (int i = 0; i < this.AllTargetExecutables.Count; i++)
-            {
-                this.AllTargetExecutables[i] = this.AllTargetExecutables[i]
-                    .UndecorateEnvVars()
-                    .ExpandEnvVars()
-                    .GetFullPath()
-                    .EnsureExtension(".exe");
-            }
-
-            this.TargetExecutablesRaw = this.AllTargetExecutables.Select(x => x.EnsureExtension(".exe")).ToList();
         }
 
         return this;
