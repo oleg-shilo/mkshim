@@ -43,7 +43,11 @@ static class MkShim
 
     static void Run(string[] args)
     {
-        // Debugger.Launch();
+        if (args.Contains("--debug"))
+        {
+            Debugger.Launch();
+        }
+
         args = args.ApplyCliMap();
 
         if (args.Any(x => x.StartsWith("--mkshim-")))
