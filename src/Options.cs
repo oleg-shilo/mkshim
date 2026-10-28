@@ -1,8 +1,9 @@
 //css_ref IconExtractor.dll
 
-// Ignore Spelling: Executables
+// Ignore Spelling: Executables Cli Runable
 
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -15,12 +16,12 @@ class RunOptions
 {
     public string ShimName;
 
+    public string TargetExecutable => this.AllTargetExecutables.FirstOrDefault();
+
     [CliArg("--target")]
-    public string TargetExecutable;
+    public List<string> AllTargetExecutables = new List<string>();
 
-    public string[] AllTargetExecutables = new string[0];
-
-    public string TargetExecutableRaw;
+    public List<string> TargetExecutablesRaw = new List<string>();
 
     [CliArg("--help|-help|-h|-?|?")]
     public bool? HelpRequest;
@@ -70,7 +71,7 @@ class RunOptions
 
     public bool IsRunable => HelpRequest != true && VersionRequest != true;
 
-    public bool KeepEnvironmentVariables => TargetExecutableRaw.HasDecoratedEnvVars();
+    public bool KeepEnvironmentVariables => TargetExecutablesRaw.Any(x => x.HasDecoratedEnvVars());
 
     public string ComposeCommandLine()
     {
@@ -104,7 +105,7 @@ class RunOptions
     {
         if (this.Patch == true || this.PatchRemove == true)
         {
-            this.TargetExecutable = this.ShimName.ExtractTargetOfShim();
+            this.AllTargetExecutables.Add(this.ShimName.ExtractTargetOfShim()); // zos
         }
         return this;
     }
@@ -169,19 +170,18 @@ class RunOptions
         this.ConfirmReplace = args.HaveArgFor(nameof(this.ConfirmReplace));
         this.Patch = args.HaveArgFor(nameof(this.Patch));
         this.PatchRemove = args.HaveArgFor(nameof(this.PatchRemove));
-        this.AllTargetExecutables = args.GetValuesFor(nameof(this.TargetExecutable));
-        this.TargetExecutable = this.AllTargetExecutables.FirstOrDefault();
+        this.AllTargetExecutables = args.GetValuesFor(nameof(this.AllTargetExecutables)).ToList();
+        this.TargetExecutablesRaw = this.AllTargetExecutables.Select(x => x.EnsureExtension(".exe")).ToList();
 
         if (this.Patch != true && this.PatchRemove != true)
         {
-            if (!this.TargetExecutable.HasText())
+            if (!this.AllTargetExecutables.Any())
             {
-                this.AllTargetExecutables = new[] { args[1] };
+                this.AllTargetExecutables.Add(args[1]);
+                this.TargetExecutablesRaw = this.AllTargetExecutables.ToList();
             }
 
-            this.TargetExecutableRaw = this.TargetExecutable;
-
-            for (int i = 0; i < this.AllTargetExecutables.Length; i++)
+            for (int i = 0; i < this.AllTargetExecutables.Count; i++)
             {
                 this.AllTargetExecutables[i] = this.AllTargetExecutables[i]
                     .UndecorateEnvVars()
@@ -190,7 +190,7 @@ class RunOptions
                     .EnsureExtension(".exe");
             }
 
-            this.TargetExecutable = this.AllTargetExecutables.FirstOrDefault();
+            this.TargetExecutablesRaw = this.AllTargetExecutables.Select(x => x.EnsureExtension(".exe")).ToList();
         }
 
         return this;

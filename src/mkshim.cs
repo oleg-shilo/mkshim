@@ -106,9 +106,9 @@ static class MkShim
             if (options.NoOverlay != true)
                 icon = icon?.ApplyOverlayToIcon(icon.ChangeDir(buildDir));
 
-            var targetRuntimePath = options.TargetExecutable;
+            var targetRuntimePaths = options.AllTargetExecutables;
             if (options.RelativeTargetPath == true)
-                targetRuntimePath = options.TargetExecutable.ToRelativePathFrom(options.ShimName.GetDirName());
+                targetRuntimePaths = options.AllTargetExecutables.Select(x => x.ToRelativePathFrom(options.ShimName.GetDirName())).ToList();
 
             var buildCommand = (rawOptions.Patch == true || rawOptions.PatchRemove == true) ?
                 options.ComposeCommandLine() :
@@ -118,14 +118,14 @@ static class MkShim
                 buildDir,
                 isWinApp,
                 options.DefaultArguments,
-                (options.KeepEnvironmentVariables == true) ? options.TargetExecutableRaw : targetRuntimePath,
+                (options.KeepEnvironmentVariables == true) ? options.TargetExecutablesRaw.ToArray() : targetRuntimePaths.ToArray(),
                 options.WaitPause == true,
                 options.ConsoleHidden == true,
                 buildCommand);
 
             var manifestFile = options.ShimRequiresElevation?.GenerateShimManifestFile(buildDir);
 
-            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePath);
+            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePaths.ToArray());
 
             if (res == null)
             {
@@ -241,8 +241,9 @@ static class MkShim
         return manifestFile;
     }
 
-    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool pauseBeforeExit, bool hiddenConsole, string buildCommand)
+    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string[] exeRuntimePaths, bool pauseBeforeExit, bool hiddenConsole, string buildCommand)
     {
+        var exeRuntimePath = exeRuntimePaths.FirstOrDefault();
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
         var buildCommandString = buildCommand
@@ -347,7 +348,7 @@ static class MkShim
         }
     }
 
-    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string manifestFile, string exeRuntimePath)
+    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string manifestFile, string[] exeRuntimePath)
     {
         string rcFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(targetExe) + ".rc");
         string resFile = Path.ChangeExtension(rcFile, ".res");
@@ -364,11 +365,11 @@ BEGIN
     BEGIN
         BLOCK ""040904B0""  // Language: US English
         BEGIN
-            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(exeRuntimePath)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(exeRuntimePath.First())} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
             VALUE ""CompanyName"", ""{targetFileMetadata.CompanyName}""
-            VALUE ""ProductName"", ""{exeRuntimePath.EscapeCSharpPath()}""
+            VALUE ""ProductName"", ""{exeRuntimePath.First().EscapeCSharpPath()}""
         END
     END
     BLOCK ""VarFileInfo""

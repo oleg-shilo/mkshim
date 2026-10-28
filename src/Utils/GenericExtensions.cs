@@ -1,4 +1,7 @@
 //css_ref IconExtractor.dll
+
+// Ignore Spelling: Cli exe Undecorate
+
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

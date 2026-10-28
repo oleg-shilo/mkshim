@@ -16,7 +16,7 @@ namespace mkshim.tests
             options = args.Parse().Process().Validate();
 
             Assert.Equal(target2_exe, options.TargetExecutable);
-            Assert.Equal(2, options.AllTargetExecutables.Length);
+            Assert.Equal(2, options.AllTargetExecutables.Count);
             Assert.Contains(target_exe, options.AllTargetExecutables);
             Assert.Contains(target2_exe, options.AllTargetExecutables);
         }

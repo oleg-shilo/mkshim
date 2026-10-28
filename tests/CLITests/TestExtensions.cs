@@ -1,3 +1,5 @@
+// Ignore Spelling: exe ico Cli
+
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -20,7 +22,9 @@ namespace mkshim.tests
         }
         public string mkshim_ico => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "logo.ico"));
         public string mkshim_overlay_32 => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "images", "overlay_32.png"));
+#pragma warning disable CA1822 // Mark members as static
         public string mkshim_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "distro", "mkshim.exe"));
+#pragma warning restore CA1822 // Mark members as static
         public string mkshim_version => typeof(CLITests).Assembly.GetName().Version.ToString();
         public string target_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tests", "TestTargetApp", "targetapp.exe"));
         public string target2_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tests", "TestTargetApp", "targetapp2.exe"));

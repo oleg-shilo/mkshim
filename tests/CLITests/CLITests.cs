@@ -1,3 +1,5 @@
+// Ignore Spelling: Env Cli Undecorating noop multitarget
+
 using System.Diagnostics;
 using System.Drawing;
 using TsudaKageyu;
@@ -466,7 +468,6 @@ namespace mkshim.tests
                 ConsoleHidden = true,
                 Windows = true,
                 WaitPause = true,
-                TargetExecutable = "target.exe",
                 AllTargetExecutables = ["target.exe", "target2.exe"]
             };
 
