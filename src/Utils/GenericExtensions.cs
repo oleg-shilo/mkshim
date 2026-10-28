@@ -264,6 +264,28 @@ static class GenericExtensions
 
         return default;
     }
+    public static string[] GetValuesFor(this string[] args, string name)
+    {
+        var switches = typeof(RunOptions).GetFields()
+            .Where(x => x.Name == name)
+            .SelectMany(x => x.GetCustomAttributes(typeof(CliArgAttribute), true))
+            .Cast<CliArgAttribute>()
+            .Select(x => x.Name)
+            .FirstOrDefault()? // there can be only one DescriptionAttribute for a member
+            .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim());
+
+        var resultList = new List<string>();
+
+        foreach (var item in switches)
+        {
+            var result = args.ArgAllValues(item);
+            if (result != null && result.Length > 0)
+                resultList.AddRange(result);
+        }
+
+        return resultList.ToArray();
+    }
 
     static void sample_HideConsoleWindow()
     {
@@ -302,6 +324,12 @@ static class GenericExtensions
 
     public static string ArgValue(this string[] args, string name)
         => args.FirstOrDefault(x => x.StartsWith($"{name}:"))?.Split(new[] { ':' }, 2).LastOrDefault();
+
+    public static string[] ArgAllValues(this string[] args, string name)
+        => args?
+        .Where(x => x.StartsWith($"{name}:"))?
+        .Select(x => x.Split(new[] { ':' }, 2).LastOrDefault())?
+        .ToArray() ?? new string[0];
 
     public static (bool isWin, bool is64) GetPeInfo(this string exe)
     {
@@ -378,6 +406,13 @@ static class GenericExtensions
             return output.Trim();
         }
         finally { File.Delete(tempFile); }
+    }
+    internal static string FirstAvailable(this string[] locations)
+    {
+        foreach (var file in locations)
+            if (File.Exists(file))
+                return file;
+        return null;
     }
 
     /// <summary>

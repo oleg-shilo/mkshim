@@ -41,7 +41,6 @@ namespace mkshim.tests
             Assert.False(@"c\test\Target.exe".HasDecoratedEnvVars());
         }
     }
-
     public class RunOptionsTests
     {
         [Fact]
@@ -454,6 +453,39 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void RunOptions_MultiTargetCommandLine_RoundTrip()
+        {
+            var options = new RunOptions
+            {
+                DefaultArguments = "param1 param2",
+                IconFile = "icon.ico",
+                RelativeTargetPath = true,
+                ShimRequiresElevation = true,
+                NoOverlay = true,
+                Console = true,
+                ConsoleHidden = true,
+                Windows = true,
+                WaitPause = true,
+                TargetExecutable = "target.exe",
+                AllTargetExecutables = ["target.exe", "target2.exe"]
+            };
+
+            var cmdLine = options.ComposeCommandLine();
+
+            var reconstructedOptions = new RunOptions().InitFrom(cmdLine);
+
+            Assert.Equal(options.DefaultArguments, reconstructedOptions.DefaultArguments);
+            Assert.Equal(options.IconFile, reconstructedOptions.IconFile);
+            Assert.Equal(options.RelativeTargetPath, reconstructedOptions.RelativeTargetPath);
+            Assert.Equal(options.ShimRequiresElevation, reconstructedOptions.ShimRequiresElevation);
+            Assert.Equal(options.NoOverlay, reconstructedOptions.NoOverlay);
+            Assert.Equal(options.Console, reconstructedOptions.Console);
+            Assert.Equal(options.ConsoleHidden, reconstructedOptions.ConsoleHidden);
+            Assert.Equal(options.Windows, reconstructedOptions.Windows);
+            Assert.Equal(options.WaitPause, reconstructedOptions.WaitPause);
+        }
+
+        [Fact]
         public void RunOptions_Clone()
         {
             var options = new RunOptions
@@ -486,6 +518,42 @@ namespace mkshim.tests
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
             var buildArgs = $"\"{shim_exe}\" C:\\Windows\\notepad.exe -c";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+
+            _Assert.AssertFileExists(shim_exe);
+
+            var output = shim_exe.Run("--mkshim-noop")
+                                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                 .Skip(1).FirstOrDefault()?.Trim();
+
+            Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
+        }
+
+        [Fact]
+        public void Print_noop_info_with_target()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var buildArgs = $"\"{shim_exe}\" --target:C:\\Windows\\notepad.exe -c";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+
+            _Assert.AssertFileExists(shim_exe);
+
+            var output = shim_exe.Run("--mkshim-noop")
+                                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                 .Skip(1).FirstOrDefault()?.Trim();
+
+            Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
+        }
+
+        [Fact]
+        public void Print_noop_info_with_multitarget()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var buildArgs = $"\"{shim_exe}\" --target:C:\\Windows\\notepad.exe --target:C:\\Windows\\SysWOW64\\notepad.exe -c";
 
             var outpout = mkshim_exe.Run(buildArgs);
 

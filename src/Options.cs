@@ -1,4 +1,7 @@
 //css_ref IconExtractor.dll
+
+// Ignore Spelling: Executables
+
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -11,7 +14,12 @@ using System.Text;
 class RunOptions
 {
     public string ShimName;
+
+    [CliArg("--target")]
     public string TargetExecutable;
+
+    public string[] AllTargetExecutables = new string[0];
+
     public string TargetExecutableRaw;
 
     [CliArg("--help|-help|-h|-?|?")]
@@ -161,14 +169,30 @@ class RunOptions
         this.ConfirmReplace = args.HaveArgFor(nameof(this.ConfirmReplace));
         this.Patch = args.HaveArgFor(nameof(this.Patch));
         this.PatchRemove = args.HaveArgFor(nameof(this.PatchRemove));
+        this.AllTargetExecutables = args.GetValuesFor(nameof(this.TargetExecutable));
+        this.TargetExecutable = this.AllTargetExecutables.FirstOrDefault();
 
         if (this.Patch != true && this.PatchRemove != true)
         {
-            var path = args[1].UndecorateEnvVars()
-                              .ExpandEnvVars();
-            this.TargetExecutable = path.GetFullPath().EnsureExtension(".exe");
-            this.TargetExecutableRaw = args[1].EnsureExtension(".exe");
+            if (!this.TargetExecutable.HasText())
+            {
+                this.AllTargetExecutables = new[] { args[1] };
+            }
+
+            this.TargetExecutableRaw = this.TargetExecutable;
+
+            for (int i = 0; i < this.AllTargetExecutables.Length; i++)
+            {
+                this.AllTargetExecutables[i] = this.AllTargetExecutables[i]
+                    .UndecorateEnvVars()
+                    .ExpandEnvVars()
+                    .GetFullPath()
+                    .EnsureExtension(".exe");
+            }
+
+            this.TargetExecutable = this.AllTargetExecutables.FirstOrDefault();
         }
+
         return this;
     }
 }
@@ -214,11 +238,18 @@ static class RunOptionsExtension
         .AppendLine("    If the path itself contains a literal `}` character, escape it by doubling it (`}}`), e.g.:")
         .AppendLine("       mkshim myapp \"{env:BASE_DIR}\\folder}}name\\app.exe\"")
         .AppendLine("    The `}}` will be stored and resolved as a single `}` at runtime.")
+        .AppendLine("    ---")
+        .AppendLine("    It is possible to supply multiple conditional targets with the --target option.")
         .AppendLine()
         .AppendLine("Options:")
         .AppendLine()
         .AppendLine(nameof(options.VersionRequest).GetCliName())
         .AppendLine("    Prints MkShim version.")
+        .AppendLine()
+        .AppendLine("--target:<target_executable>")
+        .AppendLine("    Path to the target executable to be pointed to by the created shim.")
+        .AppendLine("    You can specify multiple targets. In such case the first target found will be executed at runtime:")
+        .AppendLine("       mkshim vs \"--target:\\IDE Professional\\ide.exe\" \"--target:\\IDE Community\\ide.exe\"")
         .AppendLine()
         .AppendLine("--params:<args> | -p:<args>")
         .AppendLine("    The default arguments you always want to pass to the target executable.")

@@ -10,11 +10,20 @@ namespace mkshim.tests
 {
     public class CLITestBase
     {
+        public CLITestBase()
+        {
+            lock (typeof(CLITestBase))
+            {
+                if (!File.Exists(target2_exe) || File.GetLastWriteTimeUtc(target_exe) > File.GetLastWriteTimeUtc(target2_exe))
+                    File.Copy(target_exe, target2_exe, true);
+            }
+        }
         public string mkshim_ico => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "logo.ico"));
         public string mkshim_overlay_32 => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "src", "images", "overlay_32.png"));
         public string mkshim_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "distro", "mkshim.exe"));
         public string mkshim_version => typeof(CLITests).Assembly.GetName().Version.ToString();
         public string target_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tests", "TestTargetApp", "targetapp.exe"));
+        public string target2_exe => Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", "..", "tests", "TestTargetApp", "targetapp2.exe"));
         public string target_version => "1.1.1.0";
     }
 
