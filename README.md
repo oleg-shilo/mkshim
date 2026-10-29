@@ -44,11 +44,18 @@ target_executable
     If the path itself contains a literal `}` character, escape it by doubling it (`}}`), e.g.:
        mkshim myapp "{env:BASE_DIR}\folder}}name\app.exe"
     The `}}` will be stored and resolved as a single `}` at runtime.
+    ---
+    It is possible to supply multiple conditional targets with the --target option.
 
 Options:
 
 --version | -v
     Prints MkShim version.
+
+--target:<target_executable>
+    Path to the target executable to be pointed to by the created shim.
+    You can specify multiple targets. In such case the first target found will be executed at runtime:
+       mkshim vs "--target:\IDE Professional\ide.exe" "--target:\IDE Community\ide.exe"
 
 --params:<args> | -p:<args>
     The default arguments you always want to pass to the target executable.
