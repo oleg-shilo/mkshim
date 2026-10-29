@@ -17,6 +17,7 @@ using static System.Environment;
 class RunOptions
 {
     public string ShimName;
+    public static int MaxAllTargetCount = 5;
 
     public string TargetExecutable => this.AllTargetExecutables.FirstAvailable();
 
@@ -373,11 +374,14 @@ static class RunOptionsExtension
                                           "After that you can invoke CS-Script engine from anywhere by just typing 'css'.");
 
         // target exe
+        if (options.AllTargetExecutables.Count > RunOptions.MaxAllTargetCount)
+            throw new ValidationException($"Target executable count exceeds the maximum allowed: {RunOptions.MaxAllTargetCount}");
+
         if (!options.AllTargetExecutables.All(x => x.IsValidFilePath()))
             throw new ValidationException($"Target executable is not a valid path: {options.AllTargetExecutables.First(x => !x.IsValidFilePath())}");
 
         if (options.AllTargetExecutables.FirstAvailable() == null)
-            throw new ValidationException($"Target executable cannot be found at: {options.AllTargetExecutables.First()}");
+            throw new ValidationException($"None of the target executables can be found at: {options.AllTargetExecutables.First()}");
 
         if (!options.AllTargetExecutables.All(x => x.EndsWith(".exe", OrdinalIgnoreCase))) // parser would be normalizing files without the extension but it is still better to validate
             throw new ValidationException($"Target executable path is not an executable file: {options.AllTargetExecutables.First(x => !x.EndsWith(".exe", OrdinalIgnoreCase))}");

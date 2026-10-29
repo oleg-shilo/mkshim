@@ -596,6 +596,19 @@ namespace mkshim.tests
             Assert.Equal(primaryTarget, output);
         }
 
+        [Fact]
+        public void Build_output_with_multitarget()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_exe}\" --target:{target_exe} --target:{target2_exe} --target:{target_exe.GetDirName()}\\dummy.exe");
+
+            Assert.Contains($"`-> {target_exe} [exists]", output);
+            Assert.Contains($"`-> {target2_exe} [exists]", output);
+            Assert.Contains($"`-> {target_exe.GetDirName()}\\dummy.exe [missing]", output);
+        }
+
 
 
         [Theory]

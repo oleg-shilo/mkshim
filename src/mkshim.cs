@@ -179,7 +179,9 @@ static class MkShim
                     Console.WriteLine($"The shim has been created");
                 }
                 Console.WriteLine($"  {options.ShimName}");
-                Console.WriteLine($"     `-> {options.TargetExecutable}");
+
+                foreach (var target in options.AllTargetExecutables)
+                    Console.WriteLine($"     `-> {target} [{(File.Exists(target) ? "exists" : "missing")}]");
             }
             else
             {
