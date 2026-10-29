@@ -519,7 +519,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void Partialy_available_multitarget_build()
+        public void Partially_available_multitarget_build()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");

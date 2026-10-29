@@ -19,12 +19,12 @@ class RunOptions
     public string ShimName;
     public static int MaxAllTargetCount = 5;
 
-    public string TargetExecutable => this.AllTargetExecutables.FirstAvailable();
+    public TargetInfo TargetExecutable => this.AllTargetExecutables.FirstAvailable();
 
     [CliArg("--target")]
-    public List<string> AllTargetExecutables = new List<string>();
+    public List<TargetInfo> AllTargetExecutables = new List<TargetInfo>();
 
-    public List<string> TargetExecutablesRaw = new List<string>();
+    //public List<string> TargetExecutablesRaw = new List<string>();
 
     [CliArg("--help|-help|-h|-?|?")]
     public bool? HelpRequest;
@@ -74,14 +74,14 @@ class RunOptions
 
     public bool IsRunable => HelpRequest != true && VersionRequest != true;
 
-    public bool KeepEnvironmentVariables => TargetExecutablesRaw.Any(x => x.HasDecoratedEnvVars());
+    public bool KeepEnvironmentVariables => AllTargetExecutables.Any(x => x.PathRaw.HasDecoratedEnvVars());
 
     public string ComposeCommandLine()
     {
         var result = new StringBuilder();
 
         result.Append($"\"{ShimName}\"");
-        result.Append($" \"{TargetExecutable}\"");
+        result.Append($" \"{TargetExecutable?.Path}\"");
 
         if (HelpRequest == true) result.Append(" --help");
         if (VersionRequest == true) result.Append(" --version");
@@ -108,7 +108,8 @@ class RunOptions
     {
         if (this.Patch == true || this.PatchRemove == true)
         {
-            this.AllTargetExecutables.Add(this.ShimName.ExtractTargetOfShim()); // zos
+            var file = this.ShimName.ExtractTargetOfShim();
+            this.AllTargetExecutables.Add(new TargetInfo(file, file)); // zos
         }
         return this;
     }
@@ -184,10 +185,12 @@ class RunOptions
             {
                 var path = targetArgs[i].EnsureExtension(".exe");
 
-                this.TargetExecutablesRaw.Add(path);
-                this.AllTargetExecutables.Add(path.UndecorateEnvVars()
-                                                  .ExpandEnvVars()
-                                                  .GetFullPath());
+                var info = new TargetInfo(path.UndecorateEnvVars()
+                                              .ExpandEnvVars()
+                                              .GetFullPath(),
+                                          path);
+
+                this.AllTargetExecutables.Add(info);
             }
 
         }
@@ -205,6 +208,21 @@ public class CliArgAttribute : Attribute
     }
 
     public string Name { get; set; }
+}
+
+public class TargetInfo
+{
+    public TargetInfo(string path, string buildCmdPath = null)
+    {
+
+        PathFromBuild = buildCmdPath ?? path;
+        PathRaw = path;
+        Path = Environment.ExpandEnvironmentVariables(path);
+    }
+
+    public string PathFromBuild; // as in the build cmd
+    public string PathRaw;   // may contain envars
+    public string Path;  // expanded path to the target file
 }
 
 static class RunOptionsExtension
@@ -377,20 +395,20 @@ static class RunOptionsExtension
         if (options.AllTargetExecutables.Count > RunOptions.MaxAllTargetCount)
             throw new ValidationException($"Target executable count exceeds the maximum allowed: {RunOptions.MaxAllTargetCount}");
 
-        if (!options.AllTargetExecutables.All(x => x.IsValidFilePath()))
-            throw new ValidationException($"Target executable is not a valid path: {options.AllTargetExecutables.First(x => !x.IsValidFilePath())}");
+        if (!options.AllTargetExecutables.All(x => x.Path.IsValidFilePath()))
+            throw new ValidationException($"Target executable is not a valid path: {options.AllTargetExecutables.Select(x => x.Path).First(x => !x.IsValidFilePath())}");
 
         if (options.AllTargetExecutables.FirstAvailable() == null)
-            throw new ValidationException($"None of the target executables can be found at: {options.AllTargetExecutables.First()}");
+            throw new ValidationException($"Target executable cannot be found at: {options.AllTargetExecutables.First().Path}");
 
-        if (!options.AllTargetExecutables.All(x => x.EndsWith(".exe", OrdinalIgnoreCase))) // parser would be normalizing files without the extension but it is still better to validate
-            throw new ValidationException($"Target executable path is not an executable file: {options.AllTargetExecutables.First(x => !x.EndsWith(".exe", OrdinalIgnoreCase))}");
+        if (!options.AllTargetExecutables.All(x => x.Path.EndsWith(".exe", OrdinalIgnoreCase))) // parser would be normalizing files without the extension but it is still better to validate
+            throw new ValidationException($"Target executable path is not an executable file: {options.AllTargetExecutables.First(x => !x.Path.EndsWith(".exe", OrdinalIgnoreCase)).Path}");
 
-        if (options.AllTargetExecutables.FirstAvailable()?.IsDirectory() == true)
-            throw new ValidationException($"Target executable path is not an executable file but a folder: {options.AllTargetExecutables.FirstAvailable()}");
+        if (options.AllTargetExecutables.FirstAvailable()?.Path.IsDirectory() == true)
+            throw new ValidationException($"Target executable path is not an executable file but a folder: {options.AllTargetExecutables.FirstAvailable().Path}");
 
-        if (options.AllTargetExecutables.FirstAvailable()?.HasReadPermissions() != true)
-            throw new ValidationException($"Cannot access target executable file: {options.AllTargetExecutables.FirstAvailable()}. Please check your permissions.");
+        if (options.AllTargetExecutables.FirstAvailable()?.Path.HasReadPermissions() != true)
+            throw new ValidationException($"Cannot access target executable file: {options.AllTargetExecutables.FirstAvailable().Path}. Please check your permissions.");
 
         // shim
         if (!options.ShimName.IsValidFilePath())
@@ -409,7 +427,7 @@ static class RunOptionsExtension
             throw new ValidationException($"Cannot write to the directory: {Path.GetDirectoryName(options.ShimName)}. Please check your permissions.");
 
         // shim vs target
-        if (Path.GetFullPath(options.ShimName).ToLower() == Path.GetFullPath(options.TargetExecutable).ToLower())
+        if (Path.GetFullPath(options.ShimName).ToLower() == Path.GetFullPath(options.TargetExecutable.Path).ToLower())
             throw new ValidationException($"Shim and target executable point to the same location. Please change shim path to point to the different location.");
 
         return options;

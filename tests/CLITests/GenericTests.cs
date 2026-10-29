@@ -1,3 +1,5 @@
+// Ignore Spelling: CLI
+
 using System.Diagnostics;
 using System.Drawing;
 using TsudaKageyu;
@@ -15,10 +17,10 @@ namespace mkshim.tests
             args = ["shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}"];
             options = args.Parse().Process().Validate();
 
-            Assert.Equal(target2_exe, options.TargetExecutable);
+            Assert.Equal(target2_exe, options.TargetExecutable.Path);
             Assert.Equal(2, options.AllTargetExecutables.Count);
-            Assert.Contains(target_exe, options.AllTargetExecutables);
-            Assert.Contains(target2_exe, options.AllTargetExecutables);
+            Assert.Contains(target_exe, options.AllTargetExecutables.Select(x => x.Path));
+            Assert.Contains(target2_exe, options.AllTargetExecutables.Select(x => x.Path));
         }
 
         [Fact]
@@ -29,11 +31,11 @@ namespace mkshim.tests
 
             args = ["shim.exe", target_exe];
             options = args.Parse().Process().Validate();
-            Assert.Equal(target_exe, options.TargetExecutable);
+            Assert.Equal(target_exe, options.TargetExecutable.Path);
 
             args = ["shim.exe", $"--target:{target_exe}"];
             options = args.Parse().Process().Validate();
-            Assert.Equal(target_exe, options.TargetExecutable);
+            Assert.Equal(target_exe, options.TargetExecutable.Path);
         }
 
         [Fact]
@@ -50,7 +52,7 @@ namespace mkshim.tests
                 ConsoleHidden = true,
                 Windows = true,
                 WaitPause = true,
-                AllTargetExecutables = ["target.exe", "target2.exe"]
+                AllTargetExecutables = new List<TargetInfo> { new TargetInfo("target.exe", "target.exe"), new TargetInfo("target2.exe", "target2.exe") }
             };
 
             var cmdLine = options.ComposeCommandLine();
