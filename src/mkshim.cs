@@ -88,7 +88,7 @@ static class MkShim
         {
             Directory.CreateDirectory(buildDir);
 
-            (bool isWinApp, bool is64App) = options.TargetExecutable.Path.GetPeInfo();
+            (bool isWinApp, bool is64App) = options.FirstAvailableTarget.Path.GetPeInfo();
 
             // check if the app selection was forced by the user input
             if (options.Windows == true)
@@ -98,9 +98,9 @@ static class MkShim
 
             var icon =
                 options.IconFile ??
-                options.TargetExecutable.Path.LookupPackageIcon() ??
-                options.TargetExecutable.Path.ExtractFirstIconToFolder(buildDir, handeErrors: true) ??
-                options.TargetExecutable.Path.ExtractDefaultAppIconToFolder(buildDir);
+                options.FirstAvailableTarget.Path.LookupPackageIcon() ??
+                options.FirstAvailableTarget.Path.ExtractFirstIconToFolder(buildDir, handeErrors: true) ??
+                options.FirstAvailableTarget.Path.ExtractDefaultAppIconToFolder(buildDir);
 
             if (icon?.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) == true)
             {
@@ -110,26 +110,26 @@ static class MkShim
             if (options.NoOverlay != true)
                 icon = icon?.ApplyOverlayToIcon(icon.ChangeDir(buildDir));
 
-            var targetRuntimePaths = options.AllTargetExecutables.Select(x => x.Path).ToList();
+            var targetRuntimePaths = options.AllTargets.Select(x => x.Path).ToList();
             if (options.RelativeTargetPath == true)
-                targetRuntimePaths = options.AllTargetExecutables.Select(x => x.Path.ToRelativePathFrom(options.ShimName.GetDirName())).ToList();
+                targetRuntimePaths = options.AllTargets.Select(x => x.Path.ToRelativePathFrom(options.ShimName.GetDirName())).ToList();
 
             var buildCommand = (rawOptions.Patch == true || rawOptions.PatchRemove == true) ?
                 options.ComposeCommandLine() :
                 Environment.CommandLine;
 
-            var csFile = options.TargetExecutable.Path.GenerateShimSourceCode(
+            var csFile = options.FirstAvailableTarget.Path.GenerateShimSourceCode(
                 buildDir,
                 isWinApp,
                 options.DefaultArguments,
-                (options.KeepEnvironmentVariables == true) ? options.AllTargetExecutables.Select(x=>x.PathRaw).ToArray() : targetRuntimePaths.ToArray(),
+                (options.KeepEnvironmentVariables == true) ? options.AllTargets.Select(x=>x.PathFromBuild).ToArray() : targetRuntimePaths.ToArray(),
                 options.WaitPause == true,
                 options.ConsoleHidden == true,
                 buildCommand);
 
             var manifestFile = options.ShimRequiresElevation?.GenerateShimManifestFile(buildDir);
 
-            var res = options.TargetExecutable.Path.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePaths.ToArray());
+            var res = options.FirstAvailableTarget.Path.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePaths.ToArray());
 
             if (res == null)
             {
@@ -180,7 +180,7 @@ static class MkShim
                 }
                 Console.WriteLine($"  {options.ShimName}");
 
-                foreach (var target in options.AllTargetExecutables)
+                foreach (var target in options.AllTargets)
                     Console.WriteLine($"     `-> {target.Path} [{(File.Exists(target.Path) ? "exists" : "missing")}]");
             }
             else
