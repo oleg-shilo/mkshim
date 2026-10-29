@@ -410,7 +410,7 @@ static class GenericExtensions
         }
         finally { File.Delete(tempFile); }
     }
-    internal static string FirstAvailable(this string[] locations)
+    internal static string FirstAvailable(this IEnumerable<string> locations)
     {
         foreach (var file in locations)
             if (File.Exists(file))

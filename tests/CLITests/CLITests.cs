@@ -454,37 +454,6 @@ namespace mkshim.tests
             Assert.Equal(options.WaitPause, reconstructedOptions.WaitPause);
         }
 
-        [Fact]
-        public void RunOptions_MultiTargetCommandLine_RoundTrip()
-        {
-            var options = new RunOptions
-            {
-                DefaultArguments = "param1 param2",
-                IconFile = "icon.ico",
-                RelativeTargetPath = true,
-                ShimRequiresElevation = true,
-                NoOverlay = true,
-                Console = true,
-                ConsoleHidden = true,
-                Windows = true,
-                WaitPause = true,
-                AllTargetExecutables = ["target.exe", "target2.exe"]
-            };
-
-            var cmdLine = options.ComposeCommandLine();
-
-            var reconstructedOptions = new RunOptions().InitFrom(cmdLine);
-
-            Assert.Equal(options.DefaultArguments, reconstructedOptions.DefaultArguments);
-            Assert.Equal(options.IconFile, reconstructedOptions.IconFile);
-            Assert.Equal(options.RelativeTargetPath, reconstructedOptions.RelativeTargetPath);
-            Assert.Equal(options.ShimRequiresElevation, reconstructedOptions.ShimRequiresElevation);
-            Assert.Equal(options.NoOverlay, reconstructedOptions.NoOverlay);
-            Assert.Equal(options.Console, reconstructedOptions.Console);
-            Assert.Equal(options.ConsoleHidden, reconstructedOptions.ConsoleHidden);
-            Assert.Equal(options.Windows, reconstructedOptions.Windows);
-            Assert.Equal(options.WaitPause, reconstructedOptions.WaitPause);
-        }
 
         [Fact]
         public void RunOptions_Clone()
@@ -550,6 +519,24 @@ namespace mkshim.tests
         }
 
         [Fact]
+        public void Partialy_available_multitarget_build()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var buildArgs = $"\"{shim_exe}\" --target:C:\\dir-that-does-not-exist\\notepad.exe --target:C:\\Windows\\notepad.exe -c";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+
+            _Assert.AssertFileExists(shim_exe);
+
+            var output = shim_exe.Run("--mkshim-noop")
+                                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                 .Skip(1).FirstOrDefault()?.Trim();
+
+            Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
+        }
+
+        [Fact]
         public void Print_noop_info_with_multitarget()
         {
             var dir = this.PrepareDir();
@@ -566,6 +553,50 @@ namespace mkshim.tests
 
             Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
         }
+
+        [Fact]
+        public void Target_resolution_with_multitarget()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var primaryTarget = target_exe;
+            var secondaryTarget = target2_exe + ".copy.exe";
+
+            File.Copy(target2_exe, secondaryTarget, true);
+
+            // ------------------------------
+
+            // both targets exist, the primaryTarget should be executed
+            var buildArgs = $"\"{shim_exe}\" --target:{primaryTarget} --target:{secondaryTarget}";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+            _Assert.AssertFileExists(shim_exe);
+            var output = shim_exe.Run("-print-location");
+
+            Assert.Equal(primaryTarget, output);
+
+            // ------------------------------
+
+            // both targets exist, the secondaryTarget one should be executed
+            buildArgs = $"\"{shim_exe}\" --target:{secondaryTarget} --target:{primaryTarget}";
+
+            outpout = mkshim_exe.Run(buildArgs);
+            _Assert.AssertFileExists(shim_exe);
+            output = shim_exe.Run("-print-location");
+
+            Assert.Equal(secondaryTarget, output);
+
+            // ------------------------------
+
+            // primaryTarget does not exist, the secondaryTarget one should be executed
+            File.Delete(secondaryTarget);
+
+            output = shim_exe.Run("-print-location");
+
+            Assert.Equal(primaryTarget, output);
+        }
+
+
 
         [Theory]
         [InlineData("--win"), InlineData("-w")]
@@ -596,6 +627,7 @@ namespace mkshim.tests
 
             Assert.True(shim_console_exe.IsConsoleApp());
             Assert.False(shim_win_exe.IsConsoleApp());
+
         }
 
         [Fact]

@@ -35,5 +35,37 @@ namespace mkshim.tests
             options = args.Parse().Process().Validate();
             Assert.Equal(target_exe, options.TargetExecutable);
         }
+
+        [Fact]
+        public void RunOptions_MultiTargetCommandLine_RoundTrip()
+        {
+            var options = new RunOptions
+            {
+                DefaultArguments = "param1 param2",
+                IconFile = "icon.ico",
+                RelativeTargetPath = true,
+                ShimRequiresElevation = true,
+                NoOverlay = true,
+                Console = true,
+                ConsoleHidden = true,
+                Windows = true,
+                WaitPause = true,
+                AllTargetExecutables = ["target.exe", "target2.exe"]
+            };
+
+            var cmdLine = options.ComposeCommandLine();
+
+            var reconstructedOptions = new RunOptions().InitFrom(cmdLine);
+
+            Assert.Equal(options.DefaultArguments, reconstructedOptions.DefaultArguments);
+            Assert.Equal(options.IconFile, reconstructedOptions.IconFile);
+            Assert.Equal(options.RelativeTargetPath, reconstructedOptions.RelativeTargetPath);
+            Assert.Equal(options.ShimRequiresElevation, reconstructedOptions.ShimRequiresElevation);
+            Assert.Equal(options.NoOverlay, reconstructedOptions.NoOverlay);
+            Assert.Equal(options.Console, reconstructedOptions.Console);
+            Assert.Equal(options.ConsoleHidden, reconstructedOptions.ConsoleHidden);
+            Assert.Equal(options.Windows, reconstructedOptions.Windows);
+            Assert.Equal(options.WaitPause, reconstructedOptions.WaitPause);
+        }
     }
 }

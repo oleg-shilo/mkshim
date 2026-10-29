@@ -11,12 +11,14 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using static System.StringComparison;
+using static System.Environment;
 
 class RunOptions
 {
     public string ShimName;
 
-    public string TargetExecutable => this.AllTargetExecutables.FirstOrDefault();
+    public string TargetExecutable => this.AllTargetExecutables.FirstAvailable();
 
     [CliArg("--target")]
     public List<string> AllTargetExecutables = new List<string>();
@@ -155,7 +157,7 @@ class RunOptions
 
     public RunOptions InitFrom(string[] args)
     {
-        this.ShimName = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
+        this.ShimName = Path.GetFullPath(ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
 
         this.IconFile = args.GetValueFor(nameof(this.IconFile));
         this.NoOverlay = args.HaveArgFor(nameof(this.NoOverlay));
@@ -364,33 +366,33 @@ static class RunOptionsExtension
             return options;
 
         // OS
-        if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+        if (OSVersion.Platform != PlatformID.Win32NT)
             throw new ValidationException("Creating a shim to an executable file this way is only useful on Windows. On Linux you " +
-                                          "have a much better option `alias`. You can use it as in the example for CS-Script executable below: " + Environment.NewLine +
-                                          "alias css='dotnet /usr/local/bin/cs-script/cscs.exe'" + Environment.NewLine +
+                                          "have a much better option `alias`. You can use it as in the example for CS-Script executable below: " + NewLine +
+                                          "alias css='dotnet /usr/local/bin/cs-script/cscs.exe'" + NewLine +
                                           "After that you can invoke CS-Script engine from anywhere by just typing 'css'.");
 
         // target exe
-        if (!options.TargetExecutable.IsValidFilePath())
-            throw new ValidationException($"Target executable is not a valid path: {options.TargetExecutable}");
+        if (!options.AllTargetExecutables.All(x => x.IsValidFilePath()))
+            throw new ValidationException($"Target executable is not a valid path: {options.AllTargetExecutables.First(x => !x.IsValidFilePath())}");
 
-        if (!File.Exists(options.TargetExecutable))
-            throw new ValidationException($"Target executable cannot be found at: {options.TargetExecutable}");
+        if (options.AllTargetExecutables.FirstAvailable() == null)
+            throw new ValidationException($"Target executable cannot be found at: {options.AllTargetExecutables.First()}");
 
-        if (!options.TargetExecutable.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
-            throw new ValidationException($"Target executable path is not an executable file: {options.TargetExecutable}");
+        if (!options.AllTargetExecutables.All(x => x.EndsWith(".exe", OrdinalIgnoreCase))) // parser would be normalizing files without the extension but it is still better to validate
+            throw new ValidationException($"Target executable path is not an executable file: {options.AllTargetExecutables.First(x => !x.EndsWith(".exe", OrdinalIgnoreCase))}");
 
-        if (options.TargetExecutable.IsDirectory())
-            throw new ValidationException($"Target executable path is not an executable file but a folder: {options.TargetExecutable}");
+        if (options.AllTargetExecutables.FirstAvailable()?.IsDirectory() == true)
+            throw new ValidationException($"Target executable path is not an executable file but a folder: {options.AllTargetExecutables.FirstAvailable()}");
 
-        if (!options.TargetExecutable.HasReadPermissions())
-            throw new ValidationException($"Cannot access target executable file: {Path.GetDirectoryName(options.ShimName)}. Please check your permissions.");
+        if (options.AllTargetExecutables.FirstAvailable()?.HasReadPermissions() != true)
+            throw new ValidationException($"Cannot access target executable file: {options.AllTargetExecutables.FirstAvailable()}. Please check your permissions.");
 
         // shim
         if (!options.ShimName.IsValidFilePath())
             throw new ValidationException($"Shim is not a valid path: {options.ShimName}");
 
-        if (!options.ShimName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
+        if (!options.ShimName.EndsWith(".exe", OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
             throw new ValidationException($"Shim path is not an executable file: {options.ShimName}");
 
         if (options.ShimName.IsDirectory())
