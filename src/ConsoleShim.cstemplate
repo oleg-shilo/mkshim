@@ -12,9 +12,20 @@ using System.Runtime.InteropServices;
 
 public static class ConsoleShim
 {
-    //{appFile}
+    static TargetInfo FirstAvailableTarget { get { return targets.FindFirstAvailable(); } }
+
+    static TargetInfo[] targets = new []
+    {
+        //{appFile}
+    };
+    
+    static string appFileBuild = FirstAvailableTarget.appFileBuild;
+    static string appFileRaw = FirstAvailableTarget.appFileRaw;
+    static string appFile = FirstAvailableTarget.appFile;
+    
     //{defaultArgs}
     //{isConsoleFile}
+
 
     public static string BuildCommand = "//{buildCommandString}";
 
@@ -26,6 +37,8 @@ public static class ConsoleShim
         
         if (args.Contains("--mkshim-test"))
         {
+            // Debugger.Launch();
+
             string message = "Success: target file exists.";
             int exitCode = 0;
             if(!File.Exists(appFile))
@@ -210,9 +223,32 @@ public static class ConsoleShim
     }
 }
 
+class TargetInfo
+{
+    public TargetInfo(string path, string buildCmdPath)
+    {
+
+        appFileBuild = buildCmdPath;
+        appFileRaw = path;
+        appFile = Environment.ExpandEnvironmentVariables(path);
+    }
+
+    public string appFileBuild; // as in the build cmd
+    public string appFileRaw;   // may contain envars
+    public string appFile;
+}
+
 public static class Extensions
 {
     //{isConsoleFile}
+
+    internal static TargetInfo FindFirstAvailable(this TargetInfo[] locations)
+    {
+        foreach (var info in locations)
+            if (File.Exists(info.appFile))
+                return info;
+        return locations.FirstOrDefault();
+    }
 
     public static string ToCmdArgs(IEnumerable<string> args)
     {

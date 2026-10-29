@@ -1,5 +1,9 @@
 //css_ref IconExtractor.dll
+
+// Ignore Spelling: Executables Cli Runable
+
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
@@ -7,12 +11,20 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using static System.StringComparison;
+using static System.Environment;
 
 class RunOptions
 {
     public string ShimName;
-    public string TargetExecutable;
-    public string TargetExecutableRaw;
+    public static int MaxAllTargetCount = 5;
+
+    public string TargetExecutable => this.AllTargetExecutables.FirstAvailable();
+
+    [CliArg("--target")]
+    public List<string> AllTargetExecutables = new List<string>();
+
+    public List<string> TargetExecutablesRaw = new List<string>();
 
     [CliArg("--help|-help|-h|-?|?")]
     public bool? HelpRequest;
@@ -62,7 +74,7 @@ class RunOptions
 
     public bool IsRunable => HelpRequest != true && VersionRequest != true;
 
-    public bool KeepEnvironmentVariables => TargetExecutableRaw.HasDecoratedEnvVars();
+    public bool KeepEnvironmentVariables => TargetExecutablesRaw.Any(x => x.HasDecoratedEnvVars());
 
     public string ComposeCommandLine()
     {
@@ -96,7 +108,7 @@ class RunOptions
     {
         if (this.Patch == true || this.PatchRemove == true)
         {
-            this.TargetExecutable = this.ShimName.ExtractTargetOfShim();
+            this.AllTargetExecutables.Add(this.ShimName.ExtractTargetOfShim()); // zos
         }
         return this;
     }
@@ -125,7 +137,7 @@ class RunOptions
         var defaultValues = new RunOptions();
         foreach (var field in typeof(RunOptions).GetFields())
         {
-            if (field.Name == nameof(this.TargetExecutable) || field.Name == nameof(this.ShimName))
+            if (field.Name == nameof(this.AllTargetExecutables) || field.Name == nameof(this.ShimName))
                 continue;
 
             var extraValue = field.GetValue(extraOptions);
@@ -146,7 +158,7 @@ class RunOptions
 
     public RunOptions InitFrom(string[] args)
     {
-        this.ShimName = Path.GetFullPath(Environment.ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
+        this.ShimName = Path.GetFullPath(ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
 
         this.IconFile = args.GetValueFor(nameof(this.IconFile));
         this.NoOverlay = args.HaveArgFor(nameof(this.NoOverlay));
@@ -164,11 +176,22 @@ class RunOptions
 
         if (this.Patch != true && this.PatchRemove != true)
         {
-            var path = args[1].UndecorateEnvVars()
-                              .ExpandEnvVars();
-            this.TargetExecutable = path.GetFullPath().EnsureExtension(".exe");
-            this.TargetExecutableRaw = args[1].EnsureExtension(".exe");
+            var targetArgs = args.GetValuesFor(nameof(this.AllTargetExecutables)).ToList();
+            if (!targetArgs.Any())
+                targetArgs = new List<string> { args[1] };
+
+            for (int i = 0; i < targetArgs.Count; i++)
+            {
+                var path = targetArgs[i].EnsureExtension(".exe");
+
+                this.TargetExecutablesRaw.Add(path);
+                this.AllTargetExecutables.Add(path.UndecorateEnvVars()
+                                                  .ExpandEnvVars()
+                                                  .GetFullPath());
+            }
+
         }
+
         return this;
     }
 }
@@ -214,11 +237,18 @@ static class RunOptionsExtension
         .AppendLine("    If the path itself contains a literal `}` character, escape it by doubling it (`}}`), e.g.:")
         .AppendLine("       mkshim myapp \"{env:BASE_DIR}\\folder}}name\\app.exe\"")
         .AppendLine("    The `}}` will be stored and resolved as a single `}` at runtime.")
+        .AppendLine("    ---")
+        .AppendLine("    It is possible to supply multiple conditional targets with the --target option.")
         .AppendLine()
         .AppendLine("Options:")
         .AppendLine()
         .AppendLine(nameof(options.VersionRequest).GetCliName())
         .AppendLine("    Prints MkShim version.")
+        .AppendLine()
+        .AppendLine("--target:<target_executable>")
+        .AppendLine("    Path to the target executable to be pointed to by the created shim.")
+        .AppendLine("    You can specify multiple targets. In such case the first target found will be executed at runtime:")
+        .AppendLine("       mkshim vs \"--target:\\IDE Professional\\ide.exe\" \"--target:\\IDE Community\\ide.exe\"")
         .AppendLine()
         .AppendLine("--params:<args> | -p:<args>")
         .AppendLine("    The default arguments you always want to pass to the target executable.")
@@ -337,33 +367,36 @@ static class RunOptionsExtension
             return options;
 
         // OS
-        if (Environment.OSVersion.Platform != PlatformID.Win32NT)
+        if (OSVersion.Platform != PlatformID.Win32NT)
             throw new ValidationException("Creating a shim to an executable file this way is only useful on Windows. On Linux you " +
-                                          "have a much better option `alias`. You can use it as in the example for CS-Script executable below: " + Environment.NewLine +
-                                          "alias css='dotnet /usr/local/bin/cs-script/cscs.exe'" + Environment.NewLine +
+                                          "have a much better option `alias`. You can use it as in the example for CS-Script executable below: " + NewLine +
+                                          "alias css='dotnet /usr/local/bin/cs-script/cscs.exe'" + NewLine +
                                           "After that you can invoke CS-Script engine from anywhere by just typing 'css'.");
 
         // target exe
-        if (!options.TargetExecutable.IsValidFilePath())
-            throw new ValidationException($"Target executable is not a valid path: {options.TargetExecutable}");
+        if (options.AllTargetExecutables.Count > RunOptions.MaxAllTargetCount)
+            throw new ValidationException($"Target executable count exceeds the maximum allowed: {RunOptions.MaxAllTargetCount}");
 
-        if (!File.Exists(options.TargetExecutable))
-            throw new ValidationException($"Target executable cannot be found at: {options.TargetExecutable}");
+        if (!options.AllTargetExecutables.All(x => x.IsValidFilePath()))
+            throw new ValidationException($"Target executable is not a valid path: {options.AllTargetExecutables.First(x => !x.IsValidFilePath())}");
 
-        if (!options.TargetExecutable.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
-            throw new ValidationException($"Target executable path is not an executable file: {options.TargetExecutable}");
+        if (options.AllTargetExecutables.FirstAvailable() == null)
+            throw new ValidationException($"None of the target executables can be found at: {options.AllTargetExecutables.First()}");
 
-        if (options.TargetExecutable.IsDirectory())
-            throw new ValidationException($"Target executable path is not an executable file but a folder: {options.TargetExecutable}");
+        if (!options.AllTargetExecutables.All(x => x.EndsWith(".exe", OrdinalIgnoreCase))) // parser would be normalizing files without the extension but it is still better to validate
+            throw new ValidationException($"Target executable path is not an executable file: {options.AllTargetExecutables.First(x => !x.EndsWith(".exe", OrdinalIgnoreCase))}");
 
-        if (!options.TargetExecutable.HasReadPermissions())
-            throw new ValidationException($"Cannot access target executable file: {Path.GetDirectoryName(options.ShimName)}. Please check your permissions.");
+        if (options.AllTargetExecutables.FirstAvailable()?.IsDirectory() == true)
+            throw new ValidationException($"Target executable path is not an executable file but a folder: {options.AllTargetExecutables.FirstAvailable()}");
+
+        if (options.AllTargetExecutables.FirstAvailable()?.HasReadPermissions() != true)
+            throw new ValidationException($"Cannot access target executable file: {options.AllTargetExecutables.FirstAvailable()}. Please check your permissions.");
 
         // shim
         if (!options.ShimName.IsValidFilePath())
             throw new ValidationException($"Shim is not a valid path: {options.ShimName}");
 
-        if (!options.ShimName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
+        if (!options.ShimName.EndsWith(".exe", OrdinalIgnoreCase)) // parser would be normalizing files without the extension but it is still better to validate
             throw new ValidationException($"Shim path is not an executable file: {options.ShimName}");
 
         if (options.ShimName.IsDirectory())

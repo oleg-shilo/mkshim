@@ -397,8 +397,10 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 /tests/TestTargetApp/TargetApp.exe
+/tests/TestTargetApp/targetapp2.exe
+/tests/TestTargetApp/targetapp.exe.1.png
 /distro/Choco/mkshim.zip
 /distro/mkshim.exe
-/tests/TestTargetApp/targetapp.exe.1.png
 /distro/mkshim.zip
 /distro/mkshim.v1.5.2.0.zip
+/tests/TestTargetApp/targetapp2.exe

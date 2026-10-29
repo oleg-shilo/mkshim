@@ -110,9 +110,9 @@ static class MkShim
             if (options.NoOverlay != true)
                 icon = icon?.ApplyOverlayToIcon(icon.ChangeDir(buildDir));
 
-            var targetRuntimePath = options.TargetExecutable;
+            var targetRuntimePaths = options.AllTargetExecutables;
             if (options.RelativeTargetPath == true)
-                targetRuntimePath = options.TargetExecutable.ToRelativePathFrom(options.ShimName.GetDirName());
+                targetRuntimePaths = options.AllTargetExecutables.Select(x => x.ToRelativePathFrom(options.ShimName.GetDirName())).ToList();
 
             var buildCommand = (rawOptions.Patch == true || rawOptions.PatchRemove == true) ?
                 options.ComposeCommandLine() :
@@ -122,14 +122,14 @@ static class MkShim
                 buildDir,
                 isWinApp,
                 options.DefaultArguments,
-                (options.KeepEnvironmentVariables == true) ? options.TargetExecutableRaw : targetRuntimePath,
+                (options.KeepEnvironmentVariables == true) ? options.TargetExecutablesRaw.ToArray() : targetRuntimePaths.ToArray(),
                 options.WaitPause == true,
                 options.ConsoleHidden == true,
                 buildCommand);
 
             var manifestFile = options.ShimRequiresElevation?.GenerateShimManifestFile(buildDir);
 
-            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePath);
+            var res = options.TargetExecutable.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePaths.ToArray());
 
             if (res == null)
             {
@@ -179,7 +179,9 @@ static class MkShim
                     Console.WriteLine($"The shim has been created");
                 }
                 Console.WriteLine($"  {options.ShimName}");
-                Console.WriteLine($"     `-> {options.TargetExecutable}");
+
+                foreach (var target in options.AllTargetExecutables)
+                    Console.WriteLine($"     `-> {target} [{(File.Exists(target) ? "exists" : "missing")}]");
             }
             else
             {
@@ -245,8 +247,9 @@ static class MkShim
         return manifestFile;
     }
 
-    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string exeRuntimePath, bool pauseBeforeExit, bool hiddenConsole, string buildCommand)
+    static string GenerateShimSourceCode(this string exe, string outDir, bool isWinApp, string defaultArgs, string[] exeRuntimePaths, bool pauseBeforeExit, bool hiddenConsole, string buildCommand)
     {
+        var exeRuntimePath = exeRuntimePaths.FirstOrDefault();
         var version = exe.GetFileVersion().FileVersion;
         var template = Encoding.Default.GetString(Resource1.ConsoleShim);
         var buildCommandString = buildCommand
@@ -260,16 +263,20 @@ static class MkShim
             buildCommand)
             .ToCSharpStringLiteral();
 
-        var appFileConstants =
-            $"static string appFileBuild = @\"{exeRuntimePath}\"; // as in the build cmd{NewLine}" +
-            $"static string appFileRaw = @\"{exeRuntimePath.UndecorateEnvVars()}\";{NewLine}" +
-            $"static string appFile = System.Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath.UndecorateEnvVars()}\");{NewLine}";
+        // var appFileConstants =
+        //     $"static string appFileBuild = @\"{exeRuntimePath}\"; // as in the build cmd{NewLine}" +
+        //     $"static string appFileRaw = @\"{exeRuntimePath.UndecorateEnvVars()}\"; // may contain envars{NewLine}" +
+        //     $"static string appFile = Environment.ExpandEnvironmentVariables(@\"{exeRuntimePath.UndecorateEnvVars()}\");{NewLine}";
+
+        var appFileConstants = new StringBuilder();
+        foreach (var path in exeRuntimePaths)
+            appFileConstants.AppendLine($"new TargetInfo(@\"{path.UndecorateEnvVars()}\", @\"{path}\"),");
 
         var csFile = Path.Combine(outDir, Path.GetFileName(exe) + ".cs");
 
         var code = template.Replace("//{version}", $"[assembly: System.Reflection.AssemblyFileVersionAttribute(\"{version}\")]")
                            .Replace("//{target}", $"[assembly: System.Reflection.AssemblyDescriptionAttribute(@\"Shim to {exeRuntimePath}\")]")
-                           .Replace("//{appFile}", appFileConstants)
+                           .Replace("//{appFile}", appFileConstants.ToString())
                            .Replace("//{isConsoleFile}", $"static bool isConsole = {(!isWinApp ? "true" : "false")};")
                            .Replace("//{defaultArgs}", $"static string defaultArgs = \"{defaultArgs} \";")
                            .Replace("//{waitForExit}", $"var toWait = {(isWinApp ? "false" : "true")};")
@@ -351,7 +358,7 @@ static class MkShim
         }
     }
 
-    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string manifestFile, string exeRuntimePath)
+    static string GenerateResFor(this string targetExe, string outDir, string defaultArgs, string iconFile, string manifestFile, string[] exeRuntimePath)
     {
         string rcFile = Path.Combine(outDir, Path.GetFileNameWithoutExtension(targetExe) + ".rc");
         string resFile = Path.ChangeExtension(rcFile, ".res");
@@ -368,11 +375,11 @@ BEGIN
     BEGIN
         BLOCK ""040904B0""  // Language: US English
         BEGIN
-            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(exeRuntimePath)} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
+            VALUE ""FileDescription"", ""Shim to {Path.GetFileName(exeRuntimePath.First())} (created with mkshim v{Assembly.GetExecutingAssembly().GetName().Version}){defArgs}""
             VALUE ""FileVersion"", ""{targetFileMetadata.FileVersion}""
             VALUE ""ProductVersion"", ""{targetFileMetadata.ProductVersion}""
             VALUE ""CompanyName"", ""{targetFileMetadata.CompanyName}""
-            VALUE ""ProductName"", ""{exeRuntimePath.EscapeCSharpPath()}""
+            VALUE ""ProductName"", ""{exeRuntimePath.First().EscapeCSharpPath()}""
         END
     END
     BLOCK ""VarFileInfo""

@@ -12,6 +12,12 @@ namespace ConsoleApp1
     {
         static void Main(string[] args)
         {
+            if (args.Contains("-print-location"))
+            {
+                Console.WriteLine(System.Reflection.Assembly.GetExecutingAssembly().Location);
+                return;
+            }
+
             foreach (var arg in args)
             {
                 Console.WriteLine(arg);

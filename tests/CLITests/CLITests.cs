@@ -1,3 +1,5 @@
+// Ignore Spelling: Env Cli Undecorating noop multitarget
+
 using System.Diagnostics;
 using System.Drawing;
 using TsudaKageyu;
@@ -41,7 +43,6 @@ namespace mkshim.tests
             Assert.False(@"c\test\Target.exe".HasDecoratedEnvVars());
         }
     }
-
     public class RunOptionsTests
     {
         [Fact]
@@ -453,6 +454,7 @@ namespace mkshim.tests
             Assert.Equal(options.WaitPause, reconstructedOptions.WaitPause);
         }
 
+
         [Fact]
         public void RunOptions_Clone()
         {
@@ -498,6 +500,117 @@ namespace mkshim.tests
             Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
         }
 
+        [Fact]
+        public void Print_noop_info_with_target()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var buildArgs = $"\"{shim_exe}\" --target:C:\\Windows\\notepad.exe -c";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+
+            _Assert.AssertFileExists(shim_exe);
+
+            var output = shim_exe.Run("--mkshim-noop")
+                                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                 .Skip(1).FirstOrDefault()?.Trim();
+
+            Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
+        }
+
+        [Fact]
+        public void Partialy_available_multitarget_build()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var buildArgs = $"\"{shim_exe}\" --target:C:\\dir-that-does-not-exist\\notepad.exe --target:C:\\Windows\\notepad.exe -c";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+
+            _Assert.AssertFileExists(shim_exe);
+
+            var output = shim_exe.Run("--mkshim-noop")
+                                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                 .Skip(1).FirstOrDefault()?.Trim();
+
+            Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
+        }
+
+        [Fact]
+        public void Print_noop_info_with_multitarget()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var buildArgs = $"\"{shim_exe}\" --target:C:\\Windows\\notepad.exe --target:C:\\Windows\\SysWOW64\\notepad.exe -c";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+
+            _Assert.AssertFileExists(shim_exe);
+
+            var output = shim_exe.Run("--mkshim-noop")
+                                 .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                 .Skip(1).FirstOrDefault()?.Trim();
+
+            Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
+        }
+
+        [Fact]
+        public void Target_resolution_with_multitarget()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var primaryTarget = target_exe;
+            var secondaryTarget = target2_exe + ".copy.exe";
+
+            File.Copy(target2_exe, secondaryTarget, true);
+
+            // ------------------------------
+
+            // both targets exist, the primaryTarget should be executed
+            var buildArgs = $"\"{shim_exe}\" --target:{primaryTarget} --target:{secondaryTarget}";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+            _Assert.AssertFileExists(shim_exe);
+            var output = shim_exe.Run("-print-location");
+
+            Assert.Equal(primaryTarget, output);
+
+            // ------------------------------
+
+            // both targets exist, the secondaryTarget one should be executed
+            buildArgs = $"\"{shim_exe}\" --target:{secondaryTarget} --target:{primaryTarget}";
+
+            outpout = mkshim_exe.Run(buildArgs);
+            _Assert.AssertFileExists(shim_exe);
+            output = shim_exe.Run("-print-location");
+
+            Assert.Equal(secondaryTarget, output);
+
+            // ------------------------------
+
+            // primaryTarget does not exist, the secondaryTarget one should be executed
+            File.Delete(secondaryTarget);
+
+            output = shim_exe.Run("-print-location");
+
+            Assert.Equal(primaryTarget, output);
+        }
+
+        [Fact]
+        public void Build_output_with_multitarget()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+
+            var output = mkshim_exe.Run($"\"{shim_exe}\" --target:{target_exe} --target:{target2_exe} --target:{target_exe.GetDirName()}\\dummy.exe");
+
+            Assert.Contains($"`-> {target_exe} [exists]", output);
+            Assert.Contains($"`-> {target2_exe} [exists]", output);
+            Assert.Contains($"`-> {target_exe.GetDirName()}\\dummy.exe [missing]", output);
+        }
+
+
+
         [Theory]
         [InlineData("--win"), InlineData("-w")]
         public void ShimWinType_Forced_Selection(string @switch)
@@ -527,6 +640,7 @@ namespace mkshim.tests
 
             Assert.True(shim_console_exe.IsConsoleApp());
             Assert.False(shim_win_exe.IsConsoleApp());
+
         }
 
         [Fact]
