@@ -1,3 +1,5 @@
+// Ignore Spelling: CLI
+
 using System.Diagnostics;
 using System.Drawing;
 using TsudaKageyu;
@@ -15,10 +17,30 @@ namespace mkshim.tests
             args = ["shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}"];
             options = args.Parse().Process().Validate();
 
-            Assert.Equal(target2_exe, options.TargetExecutable);
-            Assert.Equal(2, options.AllTargetExecutables.Count);
-            Assert.Contains(target_exe, options.AllTargetExecutables);
-            Assert.Contains(target2_exe, options.AllTargetExecutables);
+            Assert.Equal(target2_exe, options.FirstAvailableTarget.Path);
+            Assert.Equal(2, options.AllTargets.Count);
+
+            Assert.Equal(target2_exe, options.AllTargets[0].Path);
+            Assert.Equal(target_exe, options.AllTargets[1].Path);
+        }
+
+        [Fact]
+        public void MultipleTargets_with_condition()
+        {
+            RunOptions options;
+            string[] args;
+
+            args = ["shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}?elevated"];
+            options = args.Parse().Process().Validate();
+
+            Assert.Equal(target2_exe, options.FirstAvailableTarget.Path);
+            Assert.Equal(2, options.AllTargets.Count);
+
+            Assert.Equal(target2_exe, options.AllTargets[0].Path);
+            Assert.False(options.AllTargets[0].OnlyWhenElevated);
+
+            Assert.Equal(target_exe, options.AllTargets[1].Path);
+            Assert.True(options.AllTargets[1].OnlyWhenElevated);
         }
 
         [Fact]
@@ -29,11 +51,11 @@ namespace mkshim.tests
 
             args = ["shim.exe", target_exe];
             options = args.Parse().Process().Validate();
-            Assert.Equal(target_exe, options.TargetExecutable);
+            Assert.Equal(target_exe, options.FirstAvailableTarget.Path);
 
             args = ["shim.exe", $"--target:{target_exe}"];
             options = args.Parse().Process().Validate();
-            Assert.Equal(target_exe, options.TargetExecutable);
+            Assert.Equal(target_exe, options.FirstAvailableTarget.Path);
         }
 
         [Fact]
@@ -50,7 +72,7 @@ namespace mkshim.tests
                 ConsoleHidden = true,
                 Windows = true,
                 WaitPause = true,
-                AllTargetExecutables = ["target.exe", "target2.exe"]
+                AllTargets = new List<TargetInfo> { new TargetInfo("target.exe", "target.exe"), new TargetInfo("target2.exe", "target2.exe") }
             };
 
             var cmdLine = options.ComposeCommandLine();

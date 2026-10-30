@@ -77,6 +77,7 @@ static class GenericExtensions
     public static string ExpandEnvVars(this string text) => Environment.ExpandEnvironmentVariables(text);
 
     public static bool HasText(this string text) => !string.IsNullOrEmpty(text);
+    public static bool IsEmpty(this string text) => string.IsNullOrEmpty(text);
 
     public static string EscapeCSharpPath(this string path) => path.Replace("\\", "\\\\");
 
@@ -410,11 +411,11 @@ static class GenericExtensions
         }
         finally { File.Delete(tempFile); }
     }
-    internal static string FirstAvailable(this IEnumerable<string> locations)
+    internal static TargetInfo FirstAvailable(this IEnumerable<TargetInfo> locations)
     {
-        foreach (var file in locations)
-            if (File.Exists(file))
-                return file;
+        foreach (var target in locations)
+            if (File.Exists(target.Path))
+                return target;
         return null;
     }
 

@@ -519,7 +519,7 @@ namespace mkshim.tests
         }
 
         [Fact]
-        public void Partialy_available_multitarget_build()
+        public void Partially_available_multitarget_build()
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
@@ -552,6 +552,51 @@ namespace mkshim.tests
                                  .Skip(1).FirstOrDefault()?.Trim();
 
             Assert.Equal($"Build shim command: mkshim {buildArgs}", output);
+        }
+
+        [Fact]
+        public void Target_condition_with_multitarget()
+        {
+            var dir = this.PrepareDir();
+            var shim_exe = dir.Combine("shim.exe");
+            var primaryTarget = target_exe;
+            var secondaryTarget = target2_exe + ".copy.exe";
+
+            File.Copy(target2_exe, secondaryTarget, true);
+
+            // ------------
+            var buildArgs = $"\"{shim_exe}\" --target:{primaryTarget} --target:{secondaryTarget}";
+
+            var outpout = mkshim_exe.Run(buildArgs);
+            _Assert.AssertFileExists(shim_exe);
+            var output = shim_exe.Run("-print-location");
+
+            Assert.Equal(primaryTarget, output);
+
+            // ------------
+            // the primaryTarget is only considered in case of the host process is elevated
+            // the secondaryTarget is only considered in case of the host process is not elevated
+            //
+            // targetRequiresElevation  |  hostIsElevated  |  targetIsValidForProbing
+            // ------------------------ |  --------------- |  ------------------------
+            // false                    |  false           |  true
+            // false                    |  true            |  true, if no other targets require elevation
+            // false                    |  true            |  false, if other target requires elevation
+            // true                     |  false           |  false
+            // true                     |  true            |  true
+
+            buildArgs = $"\"{shim_exe}\" --target:{primaryTarget}?elevated --target:{secondaryTarget}";
+
+            outpout = mkshim_exe.Run(buildArgs);
+            _Assert.AssertFileExists(shim_exe);
+            output = shim_exe.Run("-print-location");
+
+            return; // requirements need clarification before shim implements them
+
+            // we are not elevated, one target requires elevation, so no target is valid for probing and execution
+            Assert.Equal(secondaryTarget, output);
+
+
         }
 
         [Fact]

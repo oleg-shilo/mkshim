@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Principal;
 using System.Runtime.InteropServices;
 
 //{version}
@@ -19,9 +20,9 @@ public static class ConsoleShim
         //{appFile}
     };
     
-    static string appFileBuild = FirstAvailableTarget.appFileBuild;
-    static string appFileRaw = FirstAvailableTarget.appFileRaw;
-    static string appFile = FirstAvailableTarget.appFile;
+    static string appFileBuild = FirstAvailableTarget.PathFromBuild;
+    static string appFileRaw = FirstAvailableTarget.PathRaw;
+    static string appFile = FirstAvailableTarget.Path;
     
     //{defaultArgs}
     //{isConsoleFile}
@@ -225,28 +226,46 @@ public static class ConsoleShim
 
 class TargetInfo
 {
-    public TargetInfo(string path, string buildCmdPath)
+    public TargetInfo(string path, string buildCmdPath = null, bool onlyWhenElevated = false)
     {
 
-        appFileBuild = buildCmdPath;
-        appFileRaw = path;
-        appFile = Environment.ExpandEnvironmentVariables(path);
+        PathFromBuild = buildCmdPath ?? path;
+        PathRaw = path;
+        Path = Environment.ExpandEnvironmentVariables(path);
+        OnlyWhenElevated = onlyWhenElevated;
     }
 
-    public string appFileBuild; // as in the build cmd
-    public string appFileRaw;   // may contain envars
-    public string appFile;
+    public string PathFromBuild; // as in the build cmd
+    public string PathRaw;   // may contain envars
+    public string Path;  // expanded path to the target file
+    public bool OnlyWhenElevated;  // the target is only compatible with the elevated host process 
 }
 
 public static class Extensions
 {
     //{isConsoleFile}
+    
+    static public bool IsAdmin(this WindowsIdentity identity)
+    {
+        var p = new WindowsPrincipal(identity);
+        return p.IsInRole(WindowsBuiltInRole.Administrator);
+    }
 
     internal static TargetInfo FindFirstAvailable(this TargetInfo[] locations)
     {
-        foreach (var info in locations)
-            if (File.Exists(info.appFile))
+        bool isThisProcessElevated = WindowsIdentity.GetCurrent().IsAdmin();
+
+        var targets = locations;
+
+        // disabled as WIP feature to support elevated-only targets; will be re-enabled when we have a use case for it
+        // if(isThisProcessElevated)
+        //     targets = locations.Where(x => x.OnlyWhenElevated).ToArray();
+
+        foreach (var info in targets)
+        {
+            if (File.Exists(info.Path))
                 return info;
+        }
         return locations.FirstOrDefault();
     }
 
