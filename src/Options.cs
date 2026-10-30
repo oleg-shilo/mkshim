@@ -24,8 +24,6 @@ class RunOptions
     [CliArg("--target")]
     public List<TargetInfo> AllTargets = new List<TargetInfo>();
 
-    //public List<string> TargetExecutablesRaw = new List<string>();
-
     [CliArg("--help|-help|-h|-?|?")]
     public bool? HelpRequest;
 
@@ -73,8 +71,6 @@ class RunOptions
     public bool? WaitPause;
 
     public bool IsRunable => HelpRequest != true && VersionRequest != true;
-
-    public bool KeepEnvironmentVariables => AllTargets.Any(x => x.PathFromBuild.HasDecoratedEnvVars());
 
     public string ComposeCommandLine()
     {
@@ -183,13 +179,16 @@ class RunOptions
 
             for (int i = 0; i < targetArgs.Count; i++)
             {
-                var path = targetArgs[i].EnsureExtension(".exe");
+                var commandParts = targetArgs[i].Split('?');
+                var buildCmdPath = commandParts[0].EnsureExtension(".exe");
+                var conditions = commandParts.Skip(1);
 
-                var info = new TargetInfo(path.UndecorateEnvVars()
-                                              .ExpandEnvVars()
-                                              .GetFullPath(),
-                                          path);
-
+                var info = new TargetInfo(buildCmdPath
+                                                .UndecorateEnvVars()
+                                                .ExpandEnvVars()
+                                                .GetFullPath(),
+                                          buildCmdPath,
+                                          conditions.Contains("elevated"));
                 this.AllTargets.Add(info);
             }
 
@@ -212,17 +211,18 @@ public class CliArgAttribute : Attribute
 
 public class TargetInfo
 {
-    public TargetInfo(string path, string buildCmdPath = null)
+    public TargetInfo(string path, string buildCmdPath = null, bool onlyWhenElevated = false)
     {
-
         PathFromBuild = buildCmdPath ?? path;
         PathRaw = path;
         Path = Environment.ExpandEnvironmentVariables(path);
+        OnlyWhenElevated = onlyWhenElevated;
     }
 
     public string PathFromBuild; // as in the build cmd
     public string PathRaw;   // may contain envars
     public string Path;  // expanded path to the target file
+    public bool OnlyWhenElevated;  // the target is only compatible with the elevated host process 
 }
 
 static class RunOptionsExtension

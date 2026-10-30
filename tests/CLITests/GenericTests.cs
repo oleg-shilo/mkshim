@@ -19,8 +19,28 @@ namespace mkshim.tests
 
             Assert.Equal(target2_exe, options.FirstAvailableTarget.Path);
             Assert.Equal(2, options.AllTargets.Count);
-            Assert.Contains(target_exe, options.AllTargets.Select(x => x.Path));
-            Assert.Contains(target2_exe, options.AllTargets.Select(x => x.Path));
+
+            Assert.Equal(target2_exe, options.AllTargets[0].Path);
+            Assert.Equal(target_exe, options.AllTargets[1].Path);
+        }
+
+        [Fact]
+        public void MultipleTargets_with_condition()
+        {
+            RunOptions options;
+            string[] args;
+
+            args = ["shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}?elevated"];
+            options = args.Parse().Process().Validate();
+
+            Assert.Equal(target2_exe, options.FirstAvailableTarget.Path);
+            Assert.Equal(2, options.AllTargets.Count);
+
+            Assert.Equal(target2_exe, options.AllTargets[0].Path);
+            Assert.False(options.AllTargets[0].OnlyWhenElevated);
+
+            Assert.Equal(target_exe, options.AllTargets[1].Path);
+            Assert.True(options.AllTargets[1].OnlyWhenElevated);
         }
 
         [Fact]

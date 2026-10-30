@@ -77,6 +77,7 @@ static class GenericExtensions
     public static string ExpandEnvVars(this string text) => Environment.ExpandEnvironmentVariables(text);
 
     public static bool HasText(this string text) => !string.IsNullOrEmpty(text);
+    public static bool IsEmpty(this string text) => string.IsNullOrEmpty(text);
 
     public static string EscapeCSharpPath(this string path) => path.Replace("\\", "\\\\");
 
