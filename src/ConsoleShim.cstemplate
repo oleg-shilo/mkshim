@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Security.Principal;
 using System.Runtime.InteropServices;
 
 //{version}
@@ -243,12 +244,28 @@ class TargetInfo
 public static class Extensions
 {
     //{isConsoleFile}
+    
+    static public bool IsAdmin(this WindowsIdentity identity)
+    {
+        var p = new WindowsPrincipal(identity);
+        return p.IsInRole(WindowsBuiltInRole.Administrator);
+    }
 
     internal static TargetInfo FindFirstAvailable(this TargetInfo[] locations)
     {
-        foreach (var info in locations)
+        bool isThisProcessElevated = WindowsIdentity.GetCurrent().IsAdmin();
+
+        var targets = locations;
+
+        // disabled as WIP feature to support elevated-only targets; will be re-enabled when we have a use case for it
+        // if(isThisProcessElevated)
+        //     targets = locations.Where(x => x.OnlyWhenElevated).ToArray();
+
+        foreach (var info in targets)
+        {
             if (File.Exists(info.Path))
                 return info;
+        }
         return locations.FirstOrDefault();
     }
 
