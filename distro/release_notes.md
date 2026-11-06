@@ -7,8 +7,14 @@
   CLI `--target` is also parsing to support conditional suffixes (e.g., `?elevated`) and preserve both build-time and runtime path forms per target. The conditional suffixes are a preview feature and may be changed in the next release.
 
 ```ps
+  --shim:<shim_executable>
+    Path to the shim executable to be created. If `--shim:` is not specified, the first positional
+    argument will be used as the shim executable.
+    If you use `--shim:` then you also need to specify targets with the explicit `--target:` prefix.
+
   --target:<target_executable>
     Path to the target executable to be pointed to by the created shim.
     You can specify multiple targets. In such case the first target found will be executed at runtime:
        mkshim --shim:vs "--target:\IDE Professional\ide.exe" "--target:\IDE Community\ide.exe"
+
 ```

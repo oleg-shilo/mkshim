@@ -280,7 +280,7 @@ static class RunOptionsExtension
         .AppendLine("--shim:<shim_executable>")
         .AppendLine("    Path to the shim executable to be created. If `--shim:` is not specified, the first positional\n" +
                     "    argument will be used as the shim executable.")
-        .AppendLine("    if you use `--shim:` then you also need to specify targets with the explicit `--target:` prefix.")
+        .AppendLine("    If you use `--shim:` then you also need to specify targets with the explicit `--target:` prefix.")
         .AppendLine()
         .AppendLine("--target:<target_executable>")
         .AppendLine("    Path to the target executable to be pointed to by the created shim.")
