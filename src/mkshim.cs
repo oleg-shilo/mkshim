@@ -124,12 +124,12 @@ static class MkShim
                 options.WaitPause == true,
                 options.ConsoleHidden == true,
                 buildCommand,
-                options.RelativeTargetPath == true ? options.ShimName.GetDirName() : null);
+                options.IsRelativeTargetPath == true ? options.ShimName.GetDirName() : null);
 
             var manifestFile = options.ShimRequiresElevation?.GenerateShimManifestFile(buildDir);
 
             var targetRuntimePaths = options.AllTargets.Select(x => x.Path).ToArray();
-            if (options.RelativeTargetPath == true)
+            if (options.IsRelativeTargetPath == true)
                 targetRuntimePaths = options.AllTargets.Select(x => x.Path.ToRelativePathFrom(options.ShimName.GetDirName())).ToArray();
 
             var res = options.FirstAvailableTarget.Path.GenerateResFor(buildDir, options.DefaultArguments, icon, manifestFile, targetRuntimePaths.ToArray());

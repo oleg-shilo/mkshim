@@ -52,7 +52,7 @@ namespace mkshim.tests
             {
                 DefaultArguments = "param1 param2",
                 IconFile = "icon.ico",
-                RelativeTargetPath = true,
+                IsRelativeTargetPath = true,
                 ShimRequiresElevation = true,
                 NoOverlay = true,
                 Console = true,
@@ -65,7 +65,7 @@ namespace mkshim.tests
             {
                 DefaultArguments = "param3",
                 IconFile = "icon1.ico",
-                RelativeTargetPath = false,
+                IsRelativeTargetPath = false,
             };
 
             var resultOptions = options.MergeWith(newOptions);
@@ -74,7 +74,7 @@ namespace mkshim.tests
             // Fields that were set in newOptions should be overridden
             Assert.Equal("param3", resultOptions.DefaultArguments);
             Assert.Equal("icon1.ico", resultOptions.IconFile);
-            Assert.False(resultOptions.RelativeTargetPath);
+            Assert.False(resultOptions.IsRelativeTargetPath);
 
             // Fields that were NOT set in newOptions should remain from original options
             Assert.True(resultOptions.ShimRequiresElevation);
@@ -92,7 +92,7 @@ namespace mkshim.tests
             {
                 DefaultArguments = "param1 param2",
                 IconFile = "icon.ico",
-                RelativeTargetPath = true,
+                IsRelativeTargetPath = true,
                 ShimRequiresElevation = true,
                 NoOverlay = true,
                 Console = true,
@@ -103,7 +103,7 @@ namespace mkshim.tests
             var newOptions = new RunOptions
             {
                 DefaultArguments = "dummy",
-                RelativeTargetPath = true,
+                IsRelativeTargetPath = true,
             };
 
             var resultOptions = options.Remove(newOptions);
@@ -111,7 +111,7 @@ namespace mkshim.tests
             // test the merge result
             // Fields that were set in newOptions should be overridden
             Assert.Null(resultOptions.DefaultArguments);
-            Assert.False(resultOptions.RelativeTargetPath == true);
+            Assert.False(resultOptions.IsRelativeTargetPath == true);
 
             // Fields that were NOT set in newOptions should remain from original options
             Assert.Equal("icon.ico", resultOptions.IconFile);
@@ -430,7 +430,7 @@ namespace mkshim.tests
             {
                 DefaultArguments = "param1 param2",
                 IconFile = "icon.ico",
-                RelativeTargetPath = true,
+                IsRelativeTargetPath = true,
                 ShimRequiresElevation = true,
                 NoOverlay = true,
                 Console = true,
@@ -445,7 +445,7 @@ namespace mkshim.tests
 
             Assert.Equal(options.DefaultArguments, reconstructedOptions.DefaultArguments);
             Assert.Equal(options.IconFile, reconstructedOptions.IconFile);
-            Assert.Equal(options.RelativeTargetPath, reconstructedOptions.RelativeTargetPath);
+            Assert.Equal(options.IsRelativeTargetPath, reconstructedOptions.IsRelativeTargetPath);
             Assert.Equal(options.ShimRequiresElevation, reconstructedOptions.ShimRequiresElevation);
             Assert.Equal(options.NoOverlay, reconstructedOptions.NoOverlay);
             Assert.Equal(options.Console, reconstructedOptions.Console);
@@ -462,7 +462,7 @@ namespace mkshim.tests
             {
                 DefaultArguments = "param1 param2",
                 IconFile = "icon.ico",
-                RelativeTargetPath = true,
+                IsRelativeTargetPath = true,
                 ShimRequiresElevation = true,
                 NoOverlay = true,
                 Console = true,
@@ -473,7 +473,7 @@ namespace mkshim.tests
             var clonedOptions = options.Clone();
             Assert.Equal(options.DefaultArguments, clonedOptions.DefaultArguments);
             Assert.Equal(options.IconFile, clonedOptions.IconFile);
-            Assert.Equal(options.RelativeTargetPath, clonedOptions.RelativeTargetPath);
+            Assert.Equal(options.IsRelativeTargetPath, clonedOptions.IsRelativeTargetPath);
             Assert.Equal(options.ShimRequiresElevation, clonedOptions.ShimRequiresElevation);
             Assert.Equal(options.NoOverlay, clonedOptions.NoOverlay);
             Assert.Equal(options.Console, clonedOptions.Console);
@@ -505,7 +505,7 @@ namespace mkshim.tests
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
-            var buildArgs = $"\"{shim_exe}\" --target:C:\\Windows\\notepad.exe -c";
+            var buildArgs = $"\"--shim:{shim_exe}\" --target:C:\\Windows\\notepad.exe -c";
 
             var outpout = mkshim_exe.Run(buildArgs);
 
@@ -523,7 +523,7 @@ namespace mkshim.tests
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
-            var buildArgs = $"\"{shim_exe}\" --target:C:\\dir-that-does-not-exist\\notepad.exe --target:C:\\Windows\\notepad.exe -c";
+            var buildArgs = $"\"--shim:{shim_exe}\" --target:C:\\dir-that-does-not-exist\\notepad.exe --target:C:\\Windows\\notepad.exe -c";
 
             var outpout = mkshim_exe.Run(buildArgs);
 
@@ -541,7 +541,7 @@ namespace mkshim.tests
         {
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
-            var buildArgs = $"\"{shim_exe}\" --target:C:\\Windows\\notepad.exe --target:C:\\Windows\\SysWOW64\\notepad.exe -c";
+            var buildArgs = $"\"--shim:{shim_exe}\" --target:C:\\Windows\\notepad.exe --target:C:\\Windows\\SysWOW64\\notepad.exe -c";
 
             var outpout = mkshim_exe.Run(buildArgs);
 
@@ -565,7 +565,7 @@ namespace mkshim.tests
             File.Copy(target2_exe, secondaryTarget, true);
 
             // ------------
-            var buildArgs = $"\"{shim_exe}\" --target:{primaryTarget} --target:{secondaryTarget}";
+            var buildArgs = $"\"--shim:{shim_exe}\" --target:{primaryTarget} --target:{secondaryTarget}";
 
             var outpout = mkshim_exe.Run(buildArgs);
             _Assert.AssertFileExists(shim_exe);
@@ -612,7 +612,7 @@ namespace mkshim.tests
             // ------------------------------
 
             // both targets exist, the primaryTarget should be executed
-            var buildArgs = $"\"{shim_exe}\" --target:{primaryTarget} --target:{secondaryTarget}";
+            var buildArgs = $"\"--shim:{shim_exe}\" --target:{primaryTarget} --target:{secondaryTarget}";
 
             var outpout = mkshim_exe.Run(buildArgs);
             _Assert.AssertFileExists(shim_exe);
@@ -623,7 +623,7 @@ namespace mkshim.tests
             // ------------------------------
 
             // both targets exist, the secondaryTarget one should be executed
-            buildArgs = $"\"{shim_exe}\" --target:{secondaryTarget} --target:{primaryTarget}";
+            buildArgs = $"\"--shim:{shim_exe}\" --target:{secondaryTarget} --target:{primaryTarget}";
 
             outpout = mkshim_exe.Run(buildArgs);
             _Assert.AssertFileExists(shim_exe);
@@ -647,7 +647,7 @@ namespace mkshim.tests
             var dir = this.PrepareDir();
             var shim_exe = dir.Combine("shim.exe");
 
-            var output = mkshim_exe.Run($"\"{shim_exe}\" --target:{target_exe} --target:{target2_exe} --target:{target_exe.GetDirName()}\\dummy.exe");
+            var output = mkshim_exe.Run($"\"--shim:{shim_exe}\" --target:{target_exe} --target:{target2_exe} --target:{target_exe.GetDirName()}\\dummy.exe");
 
             Assert.Contains($"`-> {target_exe} [exists]", output);
             Assert.Contains($"`-> {target2_exe} [exists]", output);

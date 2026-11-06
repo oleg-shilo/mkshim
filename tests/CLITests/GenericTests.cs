@@ -1,5 +1,6 @@
 // Ignore Spelling: CLI
 
+using Microsoft.VisualStudio.CodeCoverage;
 using System.Diagnostics;
 using System.Drawing;
 using TsudaKageyu;
@@ -9,12 +10,52 @@ namespace mkshim.tests
     public class GenericTests : CLITestBase
     {
         [Fact]
+        public void ExplicitShimParam()
+        {
+            RunOptions options;
+            string[] args;
+
+            var shim = "shim.exe".GetFullPath();
+
+            // ----------------
+            // should succeed as it is a case of pure explicit shim params
+            args = [$"--shim:{shim}", $"--target:{target_exe}"];
+            options = args.Parse().Process().Validate();
+            Assert.Equal(shim, options.ShimName);
+            Assert.Equal(target_exe, options.FirstAvailableTarget.Path);
+
+            // ----------------
+            // should succeed as it is a case of pure implicit shim params
+            args = [shim, target_exe];
+            options = args.Parse().Process().Validate();
+            Assert.Equal(shim, options.ShimName);
+            Assert.Equal(target_exe, options.FirstAvailableTarget.Path);
+
+            // ----------------
+            // should fail as it is a mixture of explicit and implicit shim params
+            args = [$"--shim:{shim}", target_exe];
+            Assert.Throws<ValidationException>(() => args.Parse().Process().Validate());
+
+            // ----------------
+            // should fail as it is a mixture of explicit and implicit shim params
+            args = [shim, $"--target:{target_exe}"];
+            Assert.Throws<ValidationException>(() => args.Parse().Process().Validate());
+
+            // ----------------
+            // should succeed as it is a case of pure explicit shim params regardless the position of the params
+            args = [$"--target:{target_exe}", $"--shim:{shim}"];
+            options = args.Parse().Process().Validate();
+            Assert.Equal(shim, options.ShimName);
+            Assert.Equal(target_exe, options.FirstAvailableTarget.Path);
+        }
+
+        [Fact]
         public void MultipleTargets()
         {
             RunOptions options;
             string[] args;
 
-            args = ["shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}"];
+            args = ["--shim:shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}"];
             options = args.Parse().Process().Validate();
 
             Assert.Equal(target2_exe, options.FirstAvailableTarget.Path);
@@ -30,7 +71,7 @@ namespace mkshim.tests
             RunOptions options;
             string[] args;
 
-            args = ["shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}?elevated"];
+            args = ["--shim:shim.exe", $"--target:{target2_exe}", $"--target:{target_exe}?elevated"];
             options = args.Parse().Process().Validate();
 
             Assert.Equal(target2_exe, options.FirstAvailableTarget.Path);
@@ -53,7 +94,7 @@ namespace mkshim.tests
             options = args.Parse().Process().Validate();
             Assert.Equal(target_exe, options.FirstAvailableTarget.Path);
 
-            args = ["shim.exe", $"--target:{target_exe}"];
+            args = ["--shim:shim.exe", $"--target:{target_exe}"];
             options = args.Parse().Process().Validate();
             Assert.Equal(target_exe, options.FirstAvailableTarget.Path);
         }
@@ -65,7 +106,7 @@ namespace mkshim.tests
             {
                 DefaultArguments = "param1 param2",
                 IconFile = "icon.ico",
-                RelativeTargetPath = true,
+                IsRelativeTargetPath = true,
                 ShimRequiresElevation = true,
                 NoOverlay = true,
                 Console = true,
@@ -81,7 +122,7 @@ namespace mkshim.tests
 
             Assert.Equal(options.DefaultArguments, reconstructedOptions.DefaultArguments);
             Assert.Equal(options.IconFile, reconstructedOptions.IconFile);
-            Assert.Equal(options.RelativeTargetPath, reconstructedOptions.RelativeTargetPath);
+            Assert.Equal(options.IsRelativeTargetPath, reconstructedOptions.IsRelativeTargetPath);
             Assert.Equal(options.ShimRequiresElevation, reconstructedOptions.ShimRequiresElevation);
             Assert.Equal(options.NoOverlay, reconstructedOptions.NoOverlay);
             Assert.Equal(options.Console, reconstructedOptions.Console);

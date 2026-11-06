@@ -16,6 +16,7 @@ using static System.Environment;
 
 class RunOptions
 {
+    [CliArg("--shim")]
     public string ShimName;
     public static int MaxAllTargetCount = 5;
 
@@ -43,7 +44,7 @@ class RunOptions
     public string IconFile;
 
     [CliArg("--relative|-r")]
-    public bool? RelativeTargetPath;
+    public bool? IsRelativeTargetPath;
 
     [CliArg("--elevate")]
     public bool? ShimRequiresElevation;
@@ -83,7 +84,7 @@ class RunOptions
         if (VersionRequest == true) result.Append(" --version");
         if (Patch == true) result.Append(" --patch");
         if (PatchRemove == true) result.Append(" --patch-remove");
-        if (RelativeTargetPath == true) result.Append(" --relative");
+        if (IsRelativeTargetPath == true) result.Append(" --relative");
         if (NoOverlay == true) result.Append(" --no-overlay");
         if (ShimRequiresElevation == true) result.Append(" --elevate");
         if (IconFile.HasText()) result.Append($"  \"--icon:{IconFile}\"");
@@ -155,12 +156,23 @@ class RunOptions
 
     public RunOptions InitFrom(string[] args)
     {
-        this.ShimName = Path.GetFullPath(ExpandEnvironmentVariables(args[0])).EnsureExtension(".exe");
+        var shimParam = nameof(this.ShimName).GetCliParamNames().FirstOrDefault();
+        var targetParam = nameof(this.AllTargets).GetCliParamNames().FirstOrDefault();
 
-        this.IconFile = args.GetValueFor(nameof(this.IconFile));
+        if (args.Any(x => x.StartsWith(targetParam)) && !args.Any(x => x.StartsWith(shimParam)) ||
+           !args.Any(x => x.StartsWith(targetParam)) && args.Any(x => x.StartsWith(shimParam)))
+        {
+            throw new ValidationException($"Since you are using explicit parameter names you must specify both --shim and --target");
+        }
+
+        this.ShimName =
+            args.GetValueFor(nameof(this.ShimName))?.ExpandEnvVars()?.GetFullPath() ??
+            args[0].ExpandEnvVars().GetFullPath().EnsureExtension(".exe");
+
+        this.IconFile = args.GetValueFor(nameof(this.IconFile))?.ExpandEnvVars();
         this.NoOverlay = args.HaveArgFor(nameof(this.NoOverlay));
         this.ShimRequiresElevation = args.HaveArgFor(nameof(this.ShimRequiresElevation));
-        this.RelativeTargetPath = args.HaveArgFor(nameof(this.RelativeTargetPath));
+        this.IsRelativeTargetPath = args.HaveArgFor(nameof(this.IsRelativeTargetPath));
         this.DefaultArguments = args.GetValueFor(nameof(this.DefaultArguments))?.Replace("\\", "\\\\").Replace("\"", "\\\"") ?? "";
         this.WaitPause = args.HaveArgFor(nameof(this.WaitPause));
         this.Windows = args.HaveArgFor(nameof(this.Windows));
@@ -174,6 +186,7 @@ class RunOptions
         if (this.Patch != true && this.PatchRemove != true)
         {
             var targetArgs = args.GetValuesFor(nameof(this.AllTargets)).ToList();
+
             if (!targetArgs.Any())
                 targetArgs = new List<string> { args[1] };
 
@@ -238,6 +251,7 @@ static class RunOptionsExtension
         .AppendLine()
         .AppendLine($@"Usage:")
         .AppendLine($@"   mkshim <shim_name> <target_executable> [options]")
+        .AppendLine($@"   mkshim --shim:<shim_name> --target:<target_executable> [options]")
         .AppendLine()
         .AppendLine("shim_name")
         .AppendLine("    Path to the shim to be created.")
@@ -263,10 +277,16 @@ static class RunOptionsExtension
         .AppendLine(nameof(options.VersionRequest).GetCliName())
         .AppendLine("    Prints MkShim version.")
         .AppendLine()
+        .AppendLine("--shim:<shim_executable>")
+        .AppendLine("    Path to the shim executable to be created. If `--shim:` is not specified, the first positional\n" +
+                    "    argument will be used as the shim executable.")
+        .AppendLine("    if you use `--shim:` then you also need to specify targets with the explicit `--target:` prefix.")
+        .AppendLine()
         .AppendLine("--target:<target_executable>")
         .AppendLine("    Path to the target executable to be pointed to by the created shim.")
         .AppendLine("    You can specify multiple targets. In such case the first target found will be executed at runtime:")
         .AppendLine("       mkshim vs \"--target:\\IDE Professional\\ide.exe\" \"--target:\\IDE Community\\ide.exe\"")
+        .AppendLine("    if you use `--target:` then you also need to specify shim name with the explicit `--shim:` prefix.")
         .AppendLine()
         .AppendLine("--params:<args> | -p:<args>")
         .AppendLine("    The default arguments you always want to pass to the target executable.")
@@ -279,7 +299,7 @@ static class RunOptionsExtension
         .AppendLine("    2. The icon of the target file.")
         .AppendLine("    3. MkShim application icon.")
         .AppendLine()
-        .AppendLine(nameof(options.RelativeTargetPath).GetCliName())
+        .AppendLine(nameof(options.IsRelativeTargetPath).GetCliName())
         .AppendLine("    The created shim is to point to the target executable by the relative path with respect to the shim location.")
         .AppendLine("    Note, if the shim and the target path are pointing to the different drives the resulting path will be the absolute path to the target.")
         .AppendLine()
@@ -420,14 +440,14 @@ static class RunOptionsExtension
         if (options.ShimName.IsDirectory())
             throw new ValidationException($"Shim path is not an executable file but a folder: {options.ShimName}");
 
-        if (!Directory.Exists(Path.GetDirectoryName(options.ShimName)))
-            throw new ValidationException($"Shim parent directory does not exist: {Path.GetDirectoryName(options.ShimName)}");
+        if (!Directory.Exists(options.ShimName.GetFullPath().GetDirName()))
+            throw new ValidationException($"Shim parent directory does not exist: {options.ShimName.GetFullPath().GetDirName()}");
 
-        if (!Path.GetDirectoryName(options.ShimName).HasWritePermissions())
-            throw new ValidationException($"Cannot write to the directory: {Path.GetDirectoryName(options.ShimName)}. Please check your permissions.");
+        if (!options.ShimName.GetFullPath().GetDirName().HasWritePermissions())
+            throw new ValidationException($"Cannot write to the directory: {options.ShimName.GetFullPath().GetDirName()}. Please check your permissions.");
 
         // shim vs target
-        if (Path.GetFullPath(options.ShimName).ToLower() == Path.GetFullPath(options.FirstAvailableTarget.Path).ToLower())
+        if (options.ShimName.GetFullPath().ToLower() == options.FirstAvailableTarget.Path.GetFullPath().ToLower())
             throw new ValidationException($"Shim and target executable point to the same location. Please change shim path to point to the different location.");
 
         return options;

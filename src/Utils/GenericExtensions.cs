@@ -306,16 +306,22 @@ static class GenericExtensions
         }
     }
 
-    public static bool? HaveArgFor(this string[] args, string name)
+    public static string[] GetCliParamNames(this string fieldName)
     {
         var switches = typeof(RunOptions).GetFields()
-            .Where(x => x.Name == name)
+            .Where(x => x.Name == fieldName)
             .SelectMany(x => x.GetCustomAttributes(typeof(CliArgAttribute), true))
             .Cast<CliArgAttribute>()
             .Select(x => x.Name)
             .FirstOrDefault()? // there can be only one CliArgAttribute for a member
             .Split(new[] { '|' }, StringSplitOptions.RemoveEmptyEntries)
             .Select(x => x.Trim());
+
+        return switches?.ToArray();
+    }
+    public static bool? HaveArgFor(this string[] args, string fieldName)
+    {
+        var switches = fieldName.GetCliParamNames();
 
         foreach (var item in switches)
         {
